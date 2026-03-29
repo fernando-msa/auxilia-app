@@ -7,7 +7,6 @@ Website do movimento salesiano/católico com dois focos:
 ## Stack
 - Next.js (deploy na Vercel)
 - Firebase Client SDK (Firestore + Analytics)
-- Firebase Admin SDK (operações server-side)
 
 ## Rodando localmente
 ```bash
@@ -30,8 +29,19 @@ Se não houver conexão com o Firebase, o site exibe notícias de exemplo.
 
 ## Arquivos principais de integração
 - `lib/firebase.ts`: inicializa o app client, Firestore e Analytics.
-- `lib/firebaseAdmin.ts`: inicializa o Firebase Admin com credenciais vindas de ambiente.
+- `lib/firebaseAdmin.ts`: placeholder de operações server-side (habilitar quando o pacote `firebase-admin` estiver disponível).
 - `components/ActivitiesFeed.tsx`: carrega agenda de atividades e fallback local.
+
+
+## Fluxo de publicação (Google Auth)
+- O foco do site é **Notícias + Agenda Jovem** na home.
+- A seção "Publicação de Conteúdo" permite login com Google para inserir itens no Firestore.
+- E-mails permitidos no front atualmente: `ribeirojunior270@gmail.com`.
+- Coleções alimentadas:
+  - `noticias`
+  - `atividades`
+
+> Importante: para segurança real em produção, aplique também regras de segurança no Firebase/Firestore restringindo escrita ao usuário autorizado.
 
 ## Deploy na Vercel
 1. Suba o projeto para o GitHub.

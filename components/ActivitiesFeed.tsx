@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 type ActivityItem = {
@@ -44,7 +44,8 @@ export default function ActivitiesFeed() {
       try {
         const atividadesRef = query(
           collection(db, "atividades"),
-          orderBy("titulo", "asc"),
+          orderBy("createdAt", "desc"),
+          limit(6),
         );
         const snapshot = await getDocs(atividadesRef);
 

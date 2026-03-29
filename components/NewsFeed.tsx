@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 type NewsItem = {
@@ -38,7 +38,11 @@ export default function NewsFeed() {
   useEffect(() => {
     const fetchNoticias = async () => {
       try {
-        const noticiasRef = query(collection(db, "noticias"), orderBy("titulo", "asc"));
+        const noticiasRef = query(
+          collection(db, "noticias"),
+          orderBy("createdAt", "desc"),
+          limit(6),
+        );
         const snapshot = await getDocs(noticiasRef);
 
         if (!snapshot.empty) {
