@@ -22,16 +22,16 @@ npm run dev
    - `FIREBASE_ADMIN_PROJECT_ID`
    - `FIREBASE_ADMIN_CLIENT_EMAIL`
    - `FIREBASE_ADMIN_PRIVATE_KEY`
-4. Crie a coleção `noticias` no Firestore com campos:
-   - `titulo` (string)
-   - `resumo` (string)
-   - `categoria` (string)
+4. Crie as coleções no Firestore:
+   - `noticias`: `titulo` (string), `resumo` (string), `categoria` (string)
+   - `atividades`: `titulo` (string), `local` (string), `data` (string), `publico` (string)
 
 Se não houver conexão com o Firebase, o site exibe notícias de exemplo.
 
 ## Arquivos principais de integração
 - `lib/firebase.ts`: inicializa o app client, Firestore e Analytics.
 - `lib/firebaseAdmin.ts`: inicializa o Firebase Admin com credenciais vindas de ambiente.
+- `components/ActivitiesFeed.tsx`: carrega agenda de atividades e fallback local.
 
 ## Deploy na Vercel
 1. Suba o projeto para o GitHub.
@@ -42,3 +42,9 @@ Se não houver conexão com o Firebase, o site exibe notícias de exemplo.
 
 ## Ajuste para erro de output na Vercel
 Se o projeto estiver com erro **"Nenhum diretório de saída chamado public"**, este repositório já define `vercel.json` com `outputDirectory: ".next"`, compatível com Next.js.
+
+
+## Canais oficiais utilizados para adaptação
+- https://www.instagram.com/somosauxilia/
+- https://www.facebook.com/somosauxilia/?locale=pt_BR
+- https://www.youtube.com/c/somosauxilia
