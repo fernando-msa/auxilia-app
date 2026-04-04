@@ -2,14 +2,21 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdminEmail() {
+      return request.auth != null
+        && request.auth.token.isContentAdmin == true;
+    }
+
     match /noticias/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow create: if isAdminEmail();
+      allow update, delete: if false;
     }
 
     match /atividades/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow create: if isAdminEmail();
+      allow update, delete: if false;
     }
 
     match /{document=**} {
