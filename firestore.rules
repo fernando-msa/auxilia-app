@@ -7,16 +7,35 @@ service cloud.firestore {
         && request.auth.token.isContentAdmin == true;
     }
 
+    function isPublicReadCollection() {
+      return resource == null
+        || resource.data.status == 'published'
+        || !('status' in resource.data);
+    }
+
     match /noticias/{docId} {
-      allow read: if true;
-      allow create: if isAdminEmail();
-      allow update, delete: if false;
+      allow read: if isPublicReadCollection();
+      allow create, update, delete: if isAdminEmail();
+    }
+
+    match /eventos/{docId} {
+      allow read: if isPublicReadCollection();
+      allow create, update, delete: if isAdminEmail();
+    }
+
+    match /musicas/{docId} {
+      allow read: if isPublicReadCollection();
+      allow create, update, delete: if isAdminEmail();
+    }
+
+    match /espiritualidades/{docId} {
+      allow read: if isPublicReadCollection();
+      allow create, update, delete: if isAdminEmail();
     }
 
     match /atividades/{docId} {
       allow read: if true;
-      allow create: if isAdminEmail();
-      allow update, delete: if false;
+      allow create, update, delete: if isAdminEmail();
     }
 
     match /{document=**} {

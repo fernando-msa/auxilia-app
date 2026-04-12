@@ -1,33 +1,17 @@
-# Modelo de dados (Firestore)
+# Modelo de dados (legado + atual)
 
-## Visão geral
-O app usa duas coleções principais para alimentar a home:
+Este documento foi mantido por compatibilidade e agora referencia o modelo atualizado em `docs/content-model.md`.
 
+## Coleções principais atuais
 - `noticias`
-- `atividades`
+- `eventos`
+- `musicas`
+- `espiritualidades`
 
-As coleções são lidas publicamente no cliente para renderizar a home.
-A escrita acontece somente via endpoint server-side (`/api/admin/content`) com validação de token e e-mail permitido.
+## Coleções legadas suportadas
+- `atividades` (mantida para transição)
 
-## Coleção `noticias`
-Documento com os seguintes campos:
+## Publicação
+A escrita deve ocorrer via endpoint server-side `POST /api/admin/content`, que valida autenticação e autorização.
 
-- `titulo` (`string`, obrigatório)
-- `resumo` (`string`, obrigatório)
-- `categoria` (`string`, obrigatório)
-- `createdAt` (`Timestamp`, gerado no servidor)
-- `createdBy` (`string`, e-mail de quem publicou)
-
-## Coleção `atividades`
-Documento com os seguintes campos:
-
-- `titulo` (`string`, obrigatório)
-- `local` (`string`, obrigatório)
-- `data` (`string`, obrigatório)
-- `publico` (`string`, obrigatório)
-- `createdAt` (`Timestamp`, gerado no servidor)
-- `createdBy` (`string`, e-mail de quem publicou)
-
-## Índices e ordenação
-As consultas da home ordenam por `createdAt` em ordem decrescente.
-Se o Firestore solicitar índice composto em produção, crie conforme o link sugerido no erro do console.
+Para detalhes de campos e tipos, consulte `docs/content-model.md`.
