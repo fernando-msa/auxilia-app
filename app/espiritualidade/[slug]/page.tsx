@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { getSpiritualContents } from "@/services/content";
 
-export default async function EspiritualidadeDetalhe({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function EspiritualidadeDetalhe({ params }: { params: { slug: string } }) {
+  const { slug } = params;
   const contents = await getSpiritualContents();
   const item = contents.find((entry) => entry.slug === slug);
 
