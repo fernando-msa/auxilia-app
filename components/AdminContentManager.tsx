@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
@@ -58,39 +58,45 @@ export default function AdminContentManager() {
     [tab],
   );
 
-  const authorizedFetch = async (input: RequestInfo, init?: RequestInit) => {
-    if (!user) throw new Error("Faça login para continuar.");
+  const authorizedFetch = useCallback(
+    async (input: RequestInfo, init?: RequestInit) => {
+      if (!user) throw new Error("Faça login para continuar.");
 
-    const token = await user.getIdToken();
-    const response = await fetch(input, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(init?.headers ?? {}),
-      },
-    });
+      const token = await user.getIdToken();
+      const response = await fetch(input, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(init?.headers ?? {}),
+        },
+      });
 
-    const result = (await response.json()) as { error?: string; items?: AdminItem[] };
+      const result = (await response.json()) as { error?: string; items?: AdminItem[] };
 
-    if (!response.ok) throw new Error(result.error ?? "Erro na requisição administrativa.");
-    return result;
-  };
+      if (!response.ok) throw new Error(result.error ?? "Erro na requisição administrativa.");
+      return result;
+    },
+    [user],
+  );
 
-  const loadItems = async (currentTab: Tab) => {
-    try {
-      const result = await authorizedFetch(`/api/admin/content?type=${currentTab}`);
-      setItems(result.items ?? []);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Falha ao carregar itens.");
-    }
-  };
+  const loadItems = useCallback(
+    async (currentTab: Tab) => {
+      try {
+        const result = await authorizedFetch(`/api/admin/content?type=${currentTab}`);
+        setItems(result.items ?? []);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Falha ao carregar itens.");
+      }
+    },
+    [authorizedFetch],
+  );
 
   useEffect(() => {
     if (user) {
       void loadItems(tab);
     }
-  }, [tab, user]);
+  }, [tab, user, loadItems]);
 
   const handleGoogleLogin = async () => {
     setStatus("");

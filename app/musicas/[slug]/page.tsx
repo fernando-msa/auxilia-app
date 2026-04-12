@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
-import { getSongBySlug } from "@/services/content";
+import { getSongs } from "@/services/content";
 
-export default async function MusicaDetalhe({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const item = await getSongBySlug(slug);
+export default async function MusicaDetalhe({ params }: { params: { slug: string } }) {
+  const { slug } = params;
+  const songs = await getSongs();
+  const item = songs.find((entry) => entry.slug === slug);
 
   if (!item) return notFound();
 
