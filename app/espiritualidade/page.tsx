@@ -3,7 +3,7 @@ import { ContentGrid, SectionHeader } from "@/components/content-ui";
 import { getSpiritualContents } from "@/services/content";
 
 export const metadata: Metadata = {
-  title: "Espiritualidade | Auxilia App",
+  title: "Espiritualidade",
   description: "Evangelho do dia, orações e formação espiritual para juventude católica.",
 };
 
