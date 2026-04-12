@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
@@ -8,6 +8,13 @@ type Tab = "noticias" | "eventos" | "musicas" | "espiritualidades";
 
 type AdminItem = { id: string; title: string; slug?: string; category?: string };
 type ImportedEventItem = { id: string; title: string; startsAt: string; source: string; status: string };
+type FieldConfig = {
+  key: string;
+  label: string;
+  placeholder: string;
+  required?: boolean;
+  as?: "input" | "textarea";
+};
 
 const initialForms: Record<Tab, Record<string, string>> = {
   noticias: { title: "", summary: "", category: "Comunicados", content: "", author: "" },
@@ -39,6 +46,128 @@ const initialForms: Record<Tab, Record<string, string>> = {
   },
 };
 
+const tabLabels: Record<Tab, string> = {
+  noticias: "Notícias",
+  eventos: "Eventos",
+  musicas: "Músicas",
+  espiritualidades: "Espiritualidade",
+};
+
+const tabSingularLabels: Record<Tab, string> = {
+  noticias: "Notícia",
+  eventos: "Evento",
+  musicas: "Música",
+  espiritualidades: "Conteúdo espiritual",
+};
+
+const fieldConfigs: Record<Tab, FieldConfig[]> = {
+  noticias: [
+    { key: "title", label: "Título", placeholder: "Ex.: Retiro jovem de maio", required: true },
+    {
+      key: "summary",
+      label: "Resumo",
+      placeholder: "Resumo curto para aparecer no card da notícia.",
+      required: true,
+      as: "textarea",
+    },
+    { key: "category", label: "Categoria", placeholder: "Ex.: Formação", required: true },
+    {
+      key: "content",
+      label: "Conteúdo",
+      placeholder: "Texto principal da notícia.",
+      required: true,
+      as: "textarea",
+    },
+    { key: "author", label: "Autor/Editor", placeholder: "Ex.: Equipe de Comunicação" },
+  ],
+  eventos: [
+    { key: "title", label: "Título", placeholder: "Ex.: Adoração Jovem", required: true },
+    {
+      key: "summary",
+      label: "Resumo",
+      placeholder: "Mensagem breve sobre o evento.",
+      required: true,
+      as: "textarea",
+    },
+    { key: "category", label: "Categoria", placeholder: "Ex.: Agenda", required: true },
+    { key: "eventType", label: "Tipo", placeholder: "Ex.: adoracao", required: true },
+    { key: "location", label: "Local", placeholder: "Ex.: Capela Maria Auxiliadora", required: true },
+    { key: "audience", label: "Público", placeholder: "Ex.: Jovens e famílias", required: true },
+    {
+      key: "startsAt",
+      label: "Data/hora de início (ISO)",
+      placeholder: "Ex.: 2026-06-15T19:30:00-03:00",
+      required: true,
+    },
+    {
+      key: "externalSignupUrl",
+      label: "Link de inscrição externa",
+      placeholder: "https://...",
+    },
+  ],
+  musicas: [
+    { key: "title", label: "Título", placeholder: "Ex.: Hino Auxilia", required: true },
+    {
+      key: "summary",
+      label: "Resumo",
+      placeholder: "Contexto da música para os encontros.",
+      required: true,
+      as: "textarea",
+    },
+    { key: "category", label: "Categoria", placeholder: "Ex.: Louvor", required: true },
+    { key: "songType", label: "Tipo", placeholder: "Ex.: hino", required: true },
+    {
+      key: "lyrics",
+      label: "Letra",
+      placeholder: "Cole aqui a letra da música.",
+      required: true,
+      as: "textarea",
+    },
+    { key: "youtubeUrl", label: "Link YouTube", placeholder: "https://youtube.com/..." },
+    { key: "spotifyUrl", label: "Link Spotify", placeholder: "https://open.spotify.com/..." },
+  ],
+  espiritualidades: [
+    { key: "title", label: "Título", placeholder: "Ex.: Evangelho e reflexão do dia", required: true },
+    {
+      key: "summary",
+      label: "Resumo",
+      placeholder: "Resumo curto para card/listagem.",
+      required: true,
+      as: "textarea",
+    },
+    { key: "category", label: "Categoria", placeholder: "Ex.: Evangelho", required: true },
+    { key: "spiritualType", label: "Tipo espiritual", placeholder: "Ex.: reflexao", required: true },
+    {
+      key: "content",
+      label: "Conteúdo",
+      placeholder: "Texto completo do conteúdo espiritual.",
+      required: true,
+      as: "textarea",
+    },
+  ],
+};
+
+function normalizeAdminError(error: unknown) {
+  const fallback = "Não foi possível concluir a operação administrativa.";
+  const message = error instanceof Error ? error.message : fallback;
+
+  if (
+    message.includes("FIREBASE_ADMIN_PROJECT_ID") ||
+    message.includes("FIREBASE_ADMIN_CLIENT_EMAIL") ||
+    message.includes("FIREBASE_ADMIN_PRIVATE_KEY")
+  ) {
+    return "Configuração do Firebase Admin incompleta no servidor. Defina FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL e FIREBASE_ADMIN_PRIVATE_KEY na Vercel.";
+  }
+
+  return message;
+}
+
+function formatImportedStatus(status: string) {
+  if (status === "published") return "publicado";
+  if (status === "imported") return "importado";
+  return status;
+}
+
 export default function AdminContentManager() {
   const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<Tab>("noticias");
@@ -49,17 +178,6 @@ export default function AdminContentManager() {
   const [form, setForm] = useState<Record<Tab, Record<string, string>>>(initialForms);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
-
-  const tabTitle = useMemo(
-    () =>
-      ({
-        noticias: "Notícias",
-        eventos: "Eventos",
-        musicas: "Músicas",
-        espiritualidades: "Espiritualidade",
-      })[tab],
-    [tab],
-  );
 
   const authorizedFetch = useCallback(
     async (input: RequestInfo, init?: RequestInit) => {
@@ -89,7 +207,7 @@ export default function AdminContentManager() {
         const result = await authorizedFetch(`/api/admin/content?type=${currentTab}`);
         setItems(result.items ?? []);
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : "Falha ao carregar itens.");
+        setStatus(normalizeAdminError(error));
       }
     },
     [authorizedFetch],
@@ -102,7 +220,7 @@ export default function AdminContentManager() {
       };
       setImportedEvents(result.items ?? []);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Falha ao carregar eventos importados.");
+      setStatus(normalizeAdminError(error));
     }
   }, [authorizedFetch]);
 
@@ -129,11 +247,11 @@ export default function AdminContentManager() {
         body: JSON.stringify({ type: tab, data: form[tab] }),
       });
 
-      setStatus(`${tabTitle.slice(0, -1)} publicado com sucesso.`);
+      setStatus(`${tabSingularLabels[tab]} publicado com sucesso.`);
       setForm((prev) => ({ ...prev, [tab]: initialForms[tab] }));
       await loadItems(tab);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao publicar conteúdo.");
+      setStatus(normalizeAdminError(error));
     }
   };
 
@@ -149,7 +267,7 @@ export default function AdminContentManager() {
       setStatus("Conteúdo excluído com sucesso.");
       await loadItems(tab);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao excluir conteúdo.");
+      setStatus(normalizeAdminError(error));
     }
   };
 
@@ -167,7 +285,7 @@ export default function AdminContentManager() {
       setStatus(`Sincronização concluída. ${result.importedCount ?? 0} evento(s) importado(s).${warnings}`);
       await loadImportedEvents();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao sincronizar eventos.");
+      setStatus(normalizeAdminError(error));
     }
   };
 
@@ -187,7 +305,7 @@ export default function AdminContentManager() {
       setSelectedImported([]);
       await Promise.all([loadImportedEvents(), loadItems("eventos")]);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao publicar eventos importados.");
+      setStatus(normalizeAdminError(error));
     }
   };
 
@@ -217,29 +335,44 @@ export default function AdminContentManager() {
                 className={tab === currentTab ? "tab active" : "tab"}
                 onClick={() => setTab(currentTab)}
               >
-                {currentTab}
+                {tabLabels[currentTab]}
               </button>
             ))}
           </div>
 
           <form className="form-grid" onSubmit={publish}>
-            {Object.keys(form[tab]).map((field) => (
-              <label key={field} className="form-field">
-                <span>{field}</span>
-                <input
-                  required={["externalSignupUrl", "youtubeUrl", "spotifyUrl", "author"].indexOf(field) < 0}
-                  value={form[tab][field]}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      [tab]: { ...prev[tab], [field]: e.target.value },
-                    }))
-                  }
-                />
+            {fieldConfigs[tab].map((field) => (
+              <label key={field.key} className="form-field">
+                <span>{field.label}</span>
+                {field.as === "textarea" ? (
+                  <textarea
+                    required={field.required}
+                    placeholder={field.placeholder}
+                    value={form[tab][field.key]}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        [tab]: { ...prev[tab], [field.key]: e.target.value },
+                      }))
+                    }
+                  />
+                ) : (
+                  <input
+                    required={field.required}
+                    placeholder={field.placeholder}
+                    value={form[tab][field.key]}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        [tab]: { ...prev[tab], [field.key]: e.target.value },
+                      }))
+                    }
+                  />
+                )}
               </label>
             ))}
             <button type="submit" className="btn btn-dark">
-              Publicar {tab}
+              Publicar {tabLabels[tab]}
             </button>
           </form>
 
@@ -294,7 +427,7 @@ export default function AdminContentManager() {
                   <span>
                     <strong>{event.title}</strong>{" "}
                     <span className="muted">
-                      ({event.source} • {event.startsAt || "sem data"} • {event.status})
+                      ({event.source} • {event.startsAt || "sem data"} • {formatImportedStatus(event.status)})
                     </span>
                   </span>
                 </label>

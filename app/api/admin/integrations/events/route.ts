@@ -54,7 +54,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ items });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const isConfigError =
+      message.includes("FIREBASE_ADMIN_PROJECT_ID") ||
+      message.includes("FIREBASE_ADMIN_CLIENT_EMAIL") ||
+      message.includes("FIREBASE_ADMIN_PRIVATE_KEY");
+    return NextResponse.json(
+      {
+        error: isConfigError
+          ? "Configuração do Firebase Admin ausente no servidor. Verifique variáveis de ambiente."
+          : message,
+      },
+      { status: isConfigError ? 503 : 500 },
+    );
   }
 }
 
@@ -151,6 +162,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ação inválida." }, { status: 400 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const isConfigError =
+      message.includes("FIREBASE_ADMIN_PROJECT_ID") ||
+      message.includes("FIREBASE_ADMIN_CLIENT_EMAIL") ||
+      message.includes("FIREBASE_ADMIN_PRIVATE_KEY");
+    return NextResponse.json(
+      {
+        error: isConfigError
+          ? "Configuração do Firebase Admin ausente no servidor. Verifique variáveis de ambiente."
+          : message,
+      },
+      { status: isConfigError ? 503 : 500 },
+    );
   }
 }
