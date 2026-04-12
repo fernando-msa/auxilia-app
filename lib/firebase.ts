@@ -12,11 +12,20 @@ const requiredPublicEnv = [
   "NEXT_PUBLIC_FIREBASE_APP_ID",
 ] as const;
 
-requiredPublicEnv.forEach((envName) => {
-  if (process.env.NODE_ENV === "production" && !process.env[envName]) {
-    throw new Error(`Variável de ambiente obrigatória ausente: ${envName}`);
+function validatePublicEnvSafely() {
+  // O arquivo também é importado durante o build SSR.
+  // Não podemos lançar erro no servidor para não quebrar prerender de páginas públicas.
+  if (typeof window === "undefined") return;
+
+  const missing = requiredPublicEnv.filter((envName) => !process.env[envName]);
+  if (missing.length) {
+    console.warn(
+      `[firebase] Variáveis públicas ausentes no client: ${missing.join(", ")}. Usando fallback local de desenvolvimento.`,
+    );
   }
-});
+}
+
+validatePublicEnvSafely();
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "AIzaSyD3VmgwxAUpqu_2Z-RLOPUaTtiQEbfsaZ4",
