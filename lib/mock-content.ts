@@ -1,0 +1,122 @@
+import type { EventItem, NewsItem, SongItem, SpiritualContentItem } from "@/types/content";
+
+export const mockNews: NewsItem[] = [
+  {
+    id: "news-1",
+    type: "news",
+    slug: "encontro-juvenil-demonstracao",
+    title: "Encontro juvenil de demonstração",
+    summary: "Exemplo de notícia para apresentar o formato editorial do app.",
+    category: "Comunicados",
+    featured: true,
+    status: "published",
+    publishedAt: "2026-03-20T18:00:00.000Z",
+    author: "Equipe Auxilia (demo)",
+    content:
+      "Este texto é de demonstração e mostra como notícias institucionais podem ser publicadas com clareza, linguagem jovem e foco missionário.",
+  },
+  {
+    id: "news-2",
+    type: "news",
+    slug: "ciclo-formativo-demo",
+    title: "Ciclo formativo salesiano (conteúdo de exemplo)",
+    summary: "Modelo de notícia para formação e espiritualidade da juventude.",
+    category: "Formação",
+    status: "published",
+    publishedAt: "2026-03-10T20:00:00.000Z",
+    content: "Notícia de exemplo para validar layout, categoria e exibição de resumo.",
+  },
+];
+
+export const mockEvents: EventItem[] = [
+  {
+    id: "event-1",
+    type: "event",
+    slug: "adoracao-jovem-demo",
+    title: "Adoração Jovem (demo)",
+    summary: "Noite de oração, música e fraternidade.",
+    category: "Espiritualidade",
+    eventType: "adoracao",
+    status: "published",
+    featured: true,
+    location: "Capela local",
+    audience: "Jovens e famílias",
+    startsAt: "2026-05-12T22:00:00.000Z",
+    endsAt: "2026-05-13T00:00:00.000Z",
+    externalSignupUrl: "https://example.org/inscricao-demo",
+    publishedAt: "2026-04-01T12:00:00.000Z",
+  },
+  {
+    id: "event-2",
+    type: "event",
+    slug: "missao-solidaria-demo",
+    title: "Missão solidária (demo)",
+    summary: "Saída missionária com ações de serviço e evangelização.",
+    category: "Missão",
+    eventType: "missao",
+    status: "published",
+    location: "Região metropolitana",
+    audience: "Voluntários 16+",
+    startsAt: "2026-06-02T13:00:00.000Z",
+    publishedAt: "2026-04-02T12:00:00.000Z",
+  },
+];
+
+export const mockSongs: SongItem[] = [
+  {
+    id: "song-1",
+    type: "song",
+    slug: "hino-auxilia-demo",
+    title: "Hino Auxilia (demonstração)",
+    summary: "Exemplo de hino para estruturar repertório do movimento.",
+    category: "Louvor",
+    songType: "hino",
+    status: "published",
+    featured: true,
+    lyrics: "Maria caminha conosco, guia nossa juventude em missão...",
+    youtubeUrl: "https://www.youtube.com/",
+    publishedAt: "2026-03-18T18:00:00.000Z",
+  },
+  {
+    id: "song-2",
+    type: "song",
+    slug: "animacao-juvenil-demo",
+    title: "Animação juvenil (demo)",
+    summary: "Canção exemplo para encontros e oratórios.",
+    category: "Encontros",
+    songType: "animacao",
+    status: "published",
+    lyrics: "Seguiremos em fraternidade, anunciando esperança...",
+    spotifyUrl: "https://open.spotify.com/",
+    publishedAt: "2026-03-08T18:00:00.000Z",
+  },
+];
+
+export const mockSpiritualContents: SpiritualContentItem[] = [
+  {
+    id: "spiritual-1",
+    type: "spiritual",
+    slug: "evangelho-dia-demo",
+    title: "Evangelho e reflexão do dia (demo)",
+    summary: "Exemplo de conteúdo diário de espiritualidade.",
+    category: "Evangelho",
+    spiritualType: "evangelho",
+    status: "published",
+    featured: true,
+    content:
+      "Texto de demonstração para oração pessoal e partilha em grupo. Conteúdo não oficial, apenas para validar estrutura.",
+    publishedAt: "2026-04-10T09:00:00.000Z",
+  },
+  {
+    id: "spiritual-2",
+    type: "spiritual",
+    slug: "oracao-juvenil-demo",
+    title: "Oração breve para juventude (demo)",
+    summary: "Sugestão de oração curta para início de encontros.",
+    category: "Oração",
+    spiritualType: "oracao",
+    status: "published",
+    content: "Senhor, ensina-nos a servir com alegria, simplicidade e coragem missionária.",
+    publishedAt: "2026-04-09T09:00:00.000Z",
+  },
+];

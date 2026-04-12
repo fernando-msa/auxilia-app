@@ -1,67 +1,79 @@
-# Auxilia App Beta
+# Auxilia App
 
-Website do movimento salesiano/católico com dois focos:
-- **Consagrados**: guia de oração, missão e norteador das atividades.
-- **Jovens**: experiência com atividades e notícias do mundo salesiano.
+Plataforma digital oficial em evolução para apoiar o Movimento Auxilia na evangelização da juventude católica: espiritualidade, música, agenda de eventos e comunicação institucional.
 
-## Preview visual da home
-![Preview da home](docs/images/home-preview.svg)
+## Proposta de valor
+- **Evangelização digital acessível** para jovens e comunidades.
+- **Conteúdo organizado** em notícias, agenda, músicas e espiritualidade.
+- **Gestão segura** por painel administrativo com validação server-side.
+- **Base escalável** para evoluções futuras (PWA, notificações, perfis e analytics avançado).
+
+## Público-alvo
+- Jovens e lideranças do Movimento Auxilia.
+- Equipes locais de evangelização e comunicação.
+- Comunidade em geral que acompanha as iniciativas.
+
+## Funcionalidades atuais
+- Home institucional com seções de valor e CTAs.
+- Módulos com listagem e detalhe para:
+  - Notícias (`/noticias`)
+  - Eventos (`/eventos`)
+  - Músicas (`/musicas`)
+  - Espiritualidade (`/espiritualidade`)
+- Painel admin (`/admin`) com autenticação Google + validação no servidor para CRUD básico (publicar/listar/excluir).
+- Curadoria de agenda externa no admin (sincronizar importados e publicar selecionados).
+- Fallback com conteúdo de demonstração quando não há dados no Firestore.
+- Metadata base e `manifest` para evolução de experiência PWA.
 
 ## Stack
-- Next.js (deploy na Vercel)
-- Firebase Client SDK (Firestore + Analytics)
-- Firebase Admin SDK (validação server-side para publicação)
+- Next.js 15 + React 19 + TypeScript
+- Firebase Client SDK (Auth, Firestore, Analytics)
+- Firebase Admin SDK (autorização server-side)
+- Firestore como base de conteúdo
 
-## Rodando localmente
+## Setup local
 ```bash
 npm install
 npm run dev
 ```
 
-## Configuração do Firebase
-1. Copie `.env.example` para `.env.local`.
-2. O projeto já traz os dados públicos do app web (`NEXT_PUBLIC_*`).
-3. Para recursos server-side, preencha as variáveis do Admin SDK:
-   - `FIREBASE_ADMIN_PROJECT_ID`
-   - `FIREBASE_ADMIN_CLIENT_EMAIL`
-   - `FIREBASE_ADMIN_PRIVATE_KEY`
-   - `CONTENT_ADMIN_EMAILS` (lista separada por vírgula)
-4. Crie as coleções no Firestore:
-   - `noticias`: `titulo` (string), `resumo` (string), `categoria` (string)
-   - `atividades`: `titulo` (string), `local` (string), `data` (string), `publico` (string)
-5. Publique as regras em `firestore.rules`.
+## Variáveis de ambiente
+Configure `.env.local` com:
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
+- `FIREBASE_ADMIN_PROJECT_ID`
+- `FIREBASE_ADMIN_CLIENT_EMAIL`
+- `FIREBASE_ADMIN_PRIVATE_KEY`
+- `CONTENT_ADMIN_EMAILS` (emails separados por vírgula)
+- `SYNC_API_SECRET` (proteção dos endpoints de sincronização)
+- `GOOGLE_CALENDAR_ID` (provider de agenda - opcional)
+- `GOOGLE_CALENDAR_API_KEY` (provider de agenda - opcional)
 
-Se não houver conexão com o Firebase, o site exibe notícias de exemplo.
+## Deploy (Vercel)
+1. Conectar repositório na Vercel.
+2. Configurar variáveis de ambiente.
+3. Aplicar `firestore.rules` no Firebase.
+4. Publicar e monitorar logs do endpoint `/api/admin/content`.
 
-## Governança de conteúdo
-A publicação de conteúdo segue o fluxo abaixo:
+## Estrutura do projeto
+- `app/`: rotas e páginas (home, módulos, admin, API)
+- `components/`: componentes de UI e painel
+- `services/`: acesso a dados e mapeamentos de domínio
+- `types/`: tipos de domínio
+- `lib/`: integrações Firebase + mocks
+- `docs/`: documentação de arquitetura, roadmap, conteúdo e fluxo admin
 
-1. Usuário faz login com Google no front.
-2. Front envia token Firebase ID para `POST /api/admin/content`.
-3. API valida token via Firebase Admin e confere e-mail em `CONTENT_ADMIN_EMAILS`.
-4. Somente após validação o documento é criado no Firestore.
+## Documentação complementar
+- `docs/architecture.md`
+- `docs/content-model.md`
+- `docs/admin-workflow.md`
+- `docs/integrations.md`
+- `docs/product-roadmap.md`
 
-Com isso, a autorização não fica mais no client, e sim no servidor + regras de segurança.
-
-## Documentação do modelo de dados
-- Veja `docs/data-model.md` para estrutura das coleções, campos e metadados.
-
-## Arquivos principais de integração
-- `lib/firebase.ts`: inicializa app client, Firestore e Analytics.
-- `lib/firebaseAdmin.ts`: inicializa Admin SDK para validações server-side.
-- `app/api/admin/content/route.ts`: endpoint seguro para publicação de notícias/atividades.
-- `firestore.rules`: regras recomendadas para leitura/escrita.
-
-## Deploy na Vercel
-1. Suba o projeto para o GitHub.
-2. Importe na Vercel.
-3. Configure as variáveis de ambiente da `.env.example` no painel da Vercel.
-4. Faça deploy.
-
-## Ajuste para erro de output na Vercel
-Se o projeto estiver com erro **"Nenhum diretório de saída chamado public"**, este repositório já define `vercel.json` com `outputDirectory: ".next"`, compatível com Next.js.
-
-## Canais oficiais utilizados para adaptação
-- https://www.instagram.com/somosauxilia/
-- https://www.facebook.com/somosauxilia/?locale=pt_BR
-- https://www.youtube.com/c/somosauxilia
+## Roadmap rápido
+Consulte `docs/product-roadmap.md` para visão do que foi entregue, próximo ciclo e backlog futuro.

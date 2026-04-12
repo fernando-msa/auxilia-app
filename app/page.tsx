@@ -1,6 +1,6 @@
-import ActivitiesFeed from "@/components/ActivitiesFeed";
-import AdminContentManager from "@/components/AdminContentManager";
-import NewsFeed from "@/components/NewsFeed";
+import Link from "next/link";
+import { ContentGrid, SectionHeader, formatDate } from "@/components/content-ui";
+import { getEvents, getNews, getSongs, getSpiritualContents } from "@/services/content";
 
 const canaisOficiais = [
   { label: "Instagram", href: "https://www.instagram.com/somosauxilia/" },
@@ -8,48 +8,130 @@ const canaisOficiais = [
   { label: "YouTube", href: "https://www.youtube.com/c/somosauxilia" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const [news, events, songs, spiritual] = await Promise.all([
+    getNews(),
+    getEvents(),
+    getSongs(),
+    getSpiritualContents(),
+  ]);
+
   return (
     <main>
       <section className="hero">
         <div>
-          <p className="eyebrow">@somosauxilia • Jovens em missão</p>
-          <h1>Notícias e Agenda Auxilia</h1>
+          <p className="eyebrow">Movimento Auxilia • Juventude em missão</p>
+          <h1>Plataforma oficial de evangelização, música e agenda do Auxilia</h1>
           <p>
-            Acompanhe tudo o que movimenta a juventude salesiana: eventos, notícias, encontros,
-            formações e vida de oração.
+            Um espaço digital para rezar, cantar, formar-se e caminhar em comunidade. Acompanhe
+            notícias, eventos, conteúdos espirituais e materiais para a juventude católica.
           </p>
           <div className="cta-row">
-            <a className="btn" href="#noticias">
-              Últimas notícias
-            </a>
-            <a className="btn btn-alt" href="#agenda">
-              Próximas atividades
-            </a>
+            <Link className="btn" href="/espiritualidade">
+              Conteúdo espiritual
+            </Link>
+            <Link className="btn btn-alt" href="/eventos">
+              Ver agenda
+            </Link>
           </div>
         </div>
       </section>
 
-      <section id="noticias" className="section alt">
-        <h2>Notícias para a Juventude</h2>
-        <p className="section-description">
-          Atualizações e conteúdos para fortalecer a fé, o protagonismo jovem e a missão.
-        </p>
-        <NewsFeed />
+      <section className="section">
+        <SectionHeader
+          title="Sobre o Movimento Auxilia"
+          description="Iniciativa católica de inspiração salesiana que promove evangelização da juventude, espiritualidade mariana, música e fraternidade."
+        />
       </section>
 
-      <section id="agenda" className="section alt">
-        <h2>Agenda Jovem</h2>
-        <p className="section-description">
-          Programação de encontros, missões, oratórios e formações da comunidade.
-        </p>
-        <ActivitiesFeed />
+      <section id="espiritualidade" className="section alt">
+        <SectionHeader
+          title="Espiritualidade"
+          description="Evangelho do dia, orações e reflexões para jovens e comunidades."
+        />
+        <ContentGrid
+          items={spiritual.slice(0, 3).map((item) => ({
+            id: item.id,
+            title: item.title,
+            summary: item.summary,
+            category: item.category,
+            href: `/espiritualidade/${item.slug}`,
+            meta: formatDate(item.publishedAt),
+          }))}
+          emptyMessage="Ainda não há conteúdos espirituais publicados."
+        />
       </section>
 
-      <AdminContentManager />
+      <section id="musicas" className="section">
+        <SectionHeader
+          title="Músicas do movimento"
+          description="Repertório para encontros, oração, adoração e animação missionária."
+        />
+        <ContentGrid
+          items={songs.slice(0, 3).map((item) => ({
+            id: item.id,
+            title: item.title,
+            summary: item.summary,
+            category: item.songType,
+            href: `/musicas/${item.slug}`,
+          }))}
+          emptyMessage="Nenhuma música cadastrada até o momento."
+        />
+      </section>
+
+      <section id="eventos" className="section alt">
+        <SectionHeader
+          title="Agenda e eventos"
+          description="Programação de encontros, retiros, missões e ações de fraternidade."
+        />
+        <ContentGrid
+          items={events.slice(0, 3).map((item) => ({
+            id: item.id,
+            title: item.title,
+            summary: item.summary,
+            category: item.eventType,
+            href: `/eventos/${item.slug}`,
+            meta: `${formatDate(item.startsAt)} • ${item.location}`,
+          }))}
+          emptyMessage="Nenhum evento cadastrado no momento."
+        />
+      </section>
+
+      <section id="noticias" className="section">
+        <SectionHeader
+          title="Notícias e comunicação"
+          description="Atualizações institucionais, formações e destaques da missão juvenil."
+        />
+        <ContentGrid
+          items={news.slice(0, 3).map((item) => ({
+            id: item.id,
+            title: item.title,
+            summary: item.summary,
+            category: item.category,
+            href: `/noticias/${item.slug}`,
+            meta: formatDate(item.publishedAt),
+          }))}
+          emptyMessage="Nenhuma notícia publicada ainda."
+        />
+      </section>
+
+      <section className="section alt">
+        <SectionHeader
+          title="Participe da comunidade"
+          description="Acompanhe os canais oficiais, divulgue iniciativas locais e caminhe com o Auxilia."
+        />
+        <div className="cta-row">
+          <Link className="btn" href="/admin">
+            Área administrativa
+          </Link>
+          <a className="btn btn-alt btn-outline" href="https://www.instagram.com/somosauxilia/" target="_blank" rel="noreferrer">
+            Canais oficiais
+          </a>
+        </div>
+      </section>
 
       <footer className="footer-minimal">
-        <small>@somosauxilia</small>
+        <small>Auxilia App • Plataforma em evolução</small>
         <div className="footer-links">
           {canaisOficiais.map((item) => (
             <a key={item.label} href={item.href} target="_blank" rel="noreferrer">
