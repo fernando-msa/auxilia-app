@@ -194,3 +194,21 @@ export async function DELETE(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const validated = await validateRequest(request);
+    if ("error" in validated) return validated.error;
+
+    const body = (await request.json()) as { type: SupportedCollection; id: string };
+    if (!body?.id || !body?.type || !(body.type in allowedCollections)) {
+      return NextResponse.json({ error: "Payload inválido para exclusão." }, { status: 400 });
+    }
+
+    await getAdminDb().collection(body.type).doc(body.id).delete();
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro inesperado.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
