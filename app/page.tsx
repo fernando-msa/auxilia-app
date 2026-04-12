@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { ContentGrid, SectionHeader, formatDate } from "@/components/content-ui";
-import { getEvents, getNews, getSongs, getSpiritualContents } from "@/services/content";
+import {
+  getEvents,
+  getNews,
+  getOfficialNotices,
+  getSongs,
+  getSpiritualContents,
+} from "@/services/content";
 
 const canaisOficiais = [
   { label: "Instagram", href: "https://www.instagram.com/somosauxilia/" },
@@ -9,12 +15,15 @@ const canaisOficiais = [
 ];
 
 export default async function Home() {
-  const [news, events, songs, spiritual] = await Promise.all([
+  const [news, events, songs, spiritual, notices] = await Promise.all([
     getNews(),
     getEvents(),
     getSongs(),
     getSpiritualContents(),
+    getOfficialNotices(),
   ]);
+
+  const featuredNotice = notices[0];
 
   return (
     <main>
@@ -33,9 +42,27 @@ export default async function Home() {
             <Link className="btn btn-alt" href="/eventos">
               Ver agenda
             </Link>
+            <Link className="btn btn-alt" href="/busca">
+              Busca global
+            </Link>
           </div>
         </div>
       </section>
+
+      {featuredNotice ? (
+        <section className="section">
+          <article className={`notice-banner ${featuredNotice.level}`}>
+            <p className="eyebrow">Aviso oficial</p>
+            <h3>{featuredNotice.title}</h3>
+            <p>{featuredNotice.message}</p>
+            {featuredNotice.ctaLabel && featuredNotice.ctaUrl ? (
+              <Link href={featuredNotice.ctaUrl} className="text-link">
+                {featuredNotice.ctaLabel}
+              </Link>
+            ) : null}
+          </article>
+        </section>
+      ) : null}
 
       <section className="section">
         <SectionHeader
@@ -89,7 +116,7 @@ export default async function Home() {
             id: item.id,
             title: item.title,
             summary: item.summary,
-            category: item.eventType,
+            category: item.lifecycleStatus ?? item.eventType,
             href: `/eventos/${item.slug}`,
             meta: `${formatDate(item.startsAt)} • ${item.location}`,
           }))}
@@ -124,7 +151,12 @@ export default async function Home() {
           <Link className="btn" href="/admin">
             Área administrativa
           </Link>
-          <a className="btn btn-alt btn-outline" href="https://www.instagram.com/somosauxilia/" target="_blank" rel="noreferrer">
+          <a
+            className="btn btn-alt btn-outline"
+            href="https://www.instagram.com/somosauxilia/"
+            target="_blank"
+            rel="noreferrer"
+          >
             Canais oficiais
           </a>
         </div>

@@ -1,13 +1,30 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
+import type { ContentStatus } from "@/types/content";
 
-type Tab = "noticias" | "eventos" | "musicas" | "espiritualidades";
+type Tab = "noticias" | "eventos" | "musicas" | "espiritualidades" | "avisos_oficiais";
 
-type AdminItem = { id: string; title: string; slug?: string; category?: string };
-type ImportedEventItem = { id: string; title: string; startsAt: string; source: string; status: string };
+type AdminItem = {
+  id: string;
+  title: string;
+  slug?: string;
+  category?: string;
+  status: ContentStatus;
+  coverImage?: string;
+};
+
+type ImportedEventItem = {
+  id: string;
+  title: string;
+  startsAt: string;
+  source: string;
+  status: string;
+  location?: string;
+};
+
 type FieldConfig = {
   key: string;
   label: string;
@@ -16,8 +33,18 @@ type FieldConfig = {
   as?: "input" | "textarea";
 };
 
+const contentStatuses: ContentStatus[] = ["draft", "published", "archived"];
+
 const initialForms: Record<Tab, Record<string, string>> = {
-  noticias: { title: "", summary: "", category: "Comunicados", content: "", author: "" },
+  noticias: {
+    title: "",
+    summary: "",
+    category: "Comunicados",
+    content: "",
+    author: "",
+    coverImage: "",
+    status: "draft",
+  },
   eventos: {
     title: "",
     summary: "",
@@ -26,7 +53,10 @@ const initialForms: Record<Tab, Record<string, string>> = {
     location: "",
     audience: "Jovens",
     startsAt: "",
+    endsAt: "",
     externalSignupUrl: "",
+    coverImage: "",
+    status: "draft",
   },
   musicas: {
     title: "",
@@ -36,6 +66,8 @@ const initialForms: Record<Tab, Record<string, string>> = {
     lyrics: "",
     youtubeUrl: "",
     spotifyUrl: "",
+    coverImage: "",
+    status: "draft",
   },
   espiritualidades: {
     title: "",
@@ -43,6 +75,18 @@ const initialForms: Record<Tab, Record<string, string>> = {
     category: "Espiritualidade",
     spiritualType: "reflexao",
     content: "",
+    coverImage: "",
+    status: "draft",
+  },
+  avisos_oficiais: {
+    title: "",
+    message: "",
+    level: "info",
+    startsAt: "",
+    endsAt: "",
+    ctaLabel: "",
+    ctaUrl: "",
+    status: "draft",
   },
 };
 
@@ -51,6 +95,7 @@ const tabLabels: Record<Tab, string> = {
   eventos: "Eventos",
   musicas: "Músicas",
   espiritualidades: "Espiritualidade",
+  avisos_oficiais: "Avisos oficiais",
 };
 
 const tabSingularLabels: Record<Tab, string> = {
@@ -58,6 +103,7 @@ const tabSingularLabels: Record<Tab, string> = {
   eventos: "Evento",
   musicas: "Música",
   espiritualidades: "Conteúdo espiritual",
+  avisos_oficiais: "Aviso oficial",
 };
 
 const fieldConfigs: Record<Tab, FieldConfig[]> = {
@@ -98,6 +144,11 @@ const fieldConfigs: Record<Tab, FieldConfig[]> = {
       label: "Data/hora de início (ISO)",
       placeholder: "Ex.: 2026-06-15T19:30:00-03:00",
       required: true,
+    },
+    {
+      key: "endsAt",
+      label: "Data/hora de término (ISO)",
+      placeholder: "Ex.: 2026-06-15T22:00:00-03:00",
     },
     {
       key: "externalSignupUrl",
@@ -145,6 +196,21 @@ const fieldConfigs: Record<Tab, FieldConfig[]> = {
       as: "textarea",
     },
   ],
+  avisos_oficiais: [
+    { key: "title", label: "Título", placeholder: "Ex.: Mudança no local do encontro", required: true },
+    {
+      key: "message",
+      label: "Mensagem",
+      placeholder: "Texto do aviso oficial para comunidade.",
+      required: true,
+      as: "textarea",
+    },
+    { key: "level", label: "Nível", placeholder: "info | warning | important", required: true },
+    { key: "startsAt", label: "Início da exibição (ISO)", placeholder: "2026-05-01T12:00:00-03:00" },
+    { key: "endsAt", label: "Fim da exibição (ISO)", placeholder: "2026-05-07T23:59:00-03:00" },
+    { key: "ctaLabel", label: "Texto do botão", placeholder: "Ex.: Ver programação" },
+    { key: "ctaUrl", label: "Link do botão", placeholder: "/eventos" },
+  ],
 };
 
 function normalizeAdminError(error: unknown) {
@@ -164,7 +230,8 @@ function normalizeAdminError(error: unknown) {
 
 function formatImportedStatus(status: string) {
   if (status === "published") return "publicado";
-  if (status === "imported") return "importado";
+  if (status === "imported") return "pendente";
+  if (status === "archived") return "arquivado";
   return status;
 }
 
@@ -172,10 +239,16 @@ export default function AdminContentManager() {
   const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<Tab>("noticias");
   const [status, setStatus] = useState<string>("");
+  const [statusTone, setStatusTone] = useState<"ok" | "error">("ok");
   const [items, setItems] = useState<AdminItem[]>([]);
   const [importedEvents, setImportedEvents] = useState<ImportedEventItem[]>([]);
   const [selectedImported, setSelectedImported] = useState<string[]>([]);
   const [form, setForm] = useState<Record<Tab, Record<string, string>>>(initialForms);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [importedFilter, setImportedFilter] = useState("imported");
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -204,69 +277,140 @@ export default function AdminContentManager() {
   const loadItems = useCallback(
     async (currentTab: Tab) => {
       try {
-        const result = await authorizedFetch(`/api/admin/content?type=${currentTab}`);
+        const params = new URLSearchParams({ type: currentTab });
+        if (statusFilter !== "all") params.set("status", statusFilter);
+        if (categoryFilter) params.set("category", categoryFilter);
+        if (search) params.set("q", search);
+
+        const result = await authorizedFetch(`/api/admin/content?${params.toString()}`);
         setItems(result.items ?? []);
       } catch (error) {
+        setStatusTone("error");
         setStatus(normalizeAdminError(error));
       }
     },
-    [authorizedFetch],
+    [authorizedFetch, statusFilter, categoryFilter, search],
   );
 
   const loadImportedEvents = useCallback(async () => {
     try {
-      const result = (await authorizedFetch("/api/admin/integrations/events")) as {
+      const query = importedFilter && importedFilter !== "all" ? `?status=${importedFilter}` : "";
+      const result = (await authorizedFetch(`/api/admin/integrations/events${query}`)) as {
         items?: ImportedEventItem[];
       };
       setImportedEvents(result.items ?? []);
     } catch (error) {
+      setStatusTone("error");
       setStatus(normalizeAdminError(error));
     }
-  }, [authorizedFetch]);
+  }, [authorizedFetch, importedFilter]);
 
   useEffect(() => {
     if (user) {
       void loadItems(tab);
-      void loadImportedEvents();
     }
-  }, [tab, user, loadItems, loadImportedEvents]);
+  }, [tab, user, loadItems]);
+
+  useEffect(() => {
+    if (user) void loadImportedEvents();
+  }, [user, loadImportedEvents]);
+
+  const categoryOptions = useMemo(
+    () => [...new Set(items.map((item) => item.category).filter(Boolean))] as string[],
+    [items],
+  );
 
   const handleGoogleLogin = async () => {
     setStatus("");
     await signInWithPopup(auth, googleProvider);
+    setStatusTone("ok");
     setStatus("Login realizado. A autorização é validada no servidor.");
   };
 
-  const publish = async (event: FormEvent) => {
+  const resetCurrentForm = () => {
+    setForm((prev) => ({ ...prev, [tab]: initialForms[tab] }));
+    setEditingId(null);
+  };
+
+  const saveContent = async (event: FormEvent) => {
     event.preventDefault();
     setStatus("");
 
     try {
+      const method = editingId ? "PUT" : "POST";
       await authorizedFetch("/api/admin/content", {
-        method: "POST",
-        body: JSON.stringify({ type: tab, data: form[tab] }),
+        method,
+        body: JSON.stringify({ type: tab, id: editingId ?? undefined, data: form[tab] }),
       });
 
-      setStatus(`${tabSingularLabels[tab]} publicado com sucesso.`);
-      setForm((prev) => ({ ...prev, [tab]: initialForms[tab] }));
+      setStatusTone("ok");
+      setStatus(
+        editingId
+          ? `${tabSingularLabels[tab]} atualizado com sucesso.`
+          : `${tabSingularLabels[tab]} salvo com sucesso.`,
+      );
+      resetCurrentForm();
       await loadItems(tab);
     } catch (error) {
+      setStatusTone("error");
       setStatus(normalizeAdminError(error));
     }
   };
 
+  const editItem = (item: AdminItem) => {
+    setEditingId(item.id);
+    setForm((prev) => ({
+      ...prev,
+      [tab]: {
+        ...prev[tab],
+        title: item.title,
+        category: item.category ?? prev[tab].category,
+        status: item.status,
+        coverImage: item.coverImage ?? "",
+      },
+    }));
+    setStatusTone("ok");
+    setStatus(`Editando ${item.title}. Complete os campos e clique em salvar.`);
+  };
+
+  const handleCoverImageFile = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setStatusTone("error");
+      setStatus("Selecione um arquivo de imagem válido.");
+      return;
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("Falha ao carregar imagem."));
+      reader.readAsDataURL(file);
+    });
+
+    setForm((prev) => ({ ...prev, [tab]: { ...prev[tab], coverImage: dataUrl } }));
+    setStatusTone("ok");
+    setStatus("Imagem de capa carregada localmente. Salve para persistir no conteúdo.");
+  };
+
   const removeItem = async (id: string) => {
-    const shouldDelete = window.confirm("Deseja realmente excluir este conteúdo?");
-    if (!shouldDelete) return;
+    const confirmText = window.prompt("Digite EXCLUIR para confirmar a remoção deste conteúdo.");
+    if (confirmText !== "EXCLUIR") {
+      setStatusTone("error");
+      setStatus("Exclusão cancelada: confirmação inválida.");
+      return;
+    }
 
     try {
       await authorizedFetch("/api/admin/content", {
         method: "DELETE",
-        body: JSON.stringify({ type: tab, id }),
+        body: JSON.stringify({ type: tab, id, confirmText }),
       });
+      setStatusTone("ok");
       setStatus("Conteúdo excluído com sucesso.");
       await loadItems(tab);
     } catch (error) {
+      setStatusTone("error");
       setStatus(normalizeAdminError(error));
     }
   };
@@ -282,15 +426,18 @@ export default function AdminContentManager() {
         result.warnings && result.warnings.length
           ? ` Avisos: ${result.warnings.join(" | ")}`
           : "";
+      setStatusTone("ok");
       setStatus(`Sincronização concluída. ${result.importedCount ?? 0} evento(s) importado(s).${warnings}`);
       await loadImportedEvents();
     } catch (error) {
+      setStatusTone("error");
       setStatus(normalizeAdminError(error));
     }
   };
 
   const publishImportedEvents = async () => {
     if (!selectedImported.length) {
+      setStatusTone("error");
       setStatus("Selecione ao menos um evento importado para publicar.");
       return;
     }
@@ -301,10 +448,35 @@ export default function AdminContentManager() {
         body: JSON.stringify({ action: "publish", ids: selectedImported }),
       })) as { publishedCount?: number };
 
+      setStatusTone("ok");
       setStatus(`${result.publishedCount ?? 0} evento(s) importado(s) publicado(s) na agenda.`);
       setSelectedImported([]);
       await Promise.all([loadImportedEvents(), loadItems("eventos")]);
     } catch (error) {
+      setStatusTone("error");
+      setStatus(normalizeAdminError(error));
+    }
+  };
+
+  const archiveImportedEvents = async () => {
+    if (!selectedImported.length) {
+      setStatusTone("error");
+      setStatus("Selecione ao menos um evento importado para arquivar.");
+      return;
+    }
+
+    try {
+      const result = (await authorizedFetch("/api/admin/integrations/events", {
+        method: "POST",
+        body: JSON.stringify({ action: "archive", ids: selectedImported }),
+      })) as { archivedCount?: number };
+
+      setStatusTone("ok");
+      setStatus(`${result.archivedCount ?? 0} evento(s) importado(s) arquivado(s).`);
+      setSelectedImported([]);
+      await loadImportedEvents();
+    } catch (error) {
+      setStatusTone("error");
       setStatus(normalizeAdminError(error));
     }
   };
@@ -333,14 +505,44 @@ export default function AdminContentManager() {
                 key={currentTab}
                 type="button"
                 className={tab === currentTab ? "tab active" : "tab"}
-                onClick={() => setTab(currentTab)}
+                onClick={() => {
+                  setTab(currentTab);
+                  setEditingId(null);
+                }}
               >
                 {tabLabels[currentTab]}
               </button>
             ))}
           </div>
 
-          <form className="form-grid" onSubmit={publish}>
+          <div className="filters-row">
+            <input
+              placeholder="Buscar por título, slug ou categoria"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="all">Todos os status</option>
+              {contentStatuses.map((contentStatus) => (
+                <option key={contentStatus} value={contentStatus}>
+                  {contentStatus}
+                </option>
+              ))}
+            </select>
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+              <option value="">Todas as categorias</option>
+              {categoryOptions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn btn-ghost" onClick={() => void loadItems(tab)}>
+              Aplicar filtros
+            </button>
+          </div>
+
+          <form className="form-grid" onSubmit={saveContent}>
             {fieldConfigs[tab].map((field) => (
               <label key={field.key} className="form-field">
                 <span>{field.label}</span>
@@ -371,9 +573,53 @@ export default function AdminContentManager() {
                 )}
               </label>
             ))}
-            <button type="submit" className="btn btn-dark">
-              Publicar {tabLabels[tab]}
-            </button>
+
+            {tab !== "avisos_oficiais" ? (
+              <label className="form-field">
+                <span>Imagem de capa (URL)</span>
+                <input
+                  placeholder="https://..."
+                  value={form[tab].coverImage}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, [tab]: { ...prev[tab], coverImage: e.target.value } }))
+                  }
+                />
+              </label>
+            ) : null}
+
+            {tab !== "avisos_oficiais" ? (
+              <label className="form-field">
+                <span>Upload rápido de imagem de capa</span>
+                <input type="file" accept="image/*" onChange={(e) => void handleCoverImageFile(e.target.files?.[0] ?? null)} />
+              </label>
+            ) : null}
+
+            <label className="form-field">
+              <span>Status</span>
+              <select
+                value={form[tab].status}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, [tab]: { ...prev[tab], status: e.target.value } }))
+                }
+              >
+                {contentStatuses.map((contentStatus) => (
+                  <option key={contentStatus} value={contentStatus}>
+                    {contentStatus}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="cta-row">
+              <button type="submit" className="btn btn-dark">
+                {editingId ? "Salvar edição" : `Criar ${tabSingularLabels[tab]}`}
+              </button>
+              {editingId ? (
+                <button type="button" className="btn btn-ghost" onClick={resetCurrentForm}>
+                  Cancelar edição
+                </button>
+              ) : null}
+            </div>
           </form>
 
           <h3>Conteúdos recentes</h3>
@@ -382,11 +628,18 @@ export default function AdminContentManager() {
               <li key={item.id}>
                 <div>
                   <strong>{item.title}</strong>
-                  <p className="muted">{item.category}</p>
+                  <p className="muted">
+                    {item.category} • {item.status}
+                  </p>
                 </div>
-                <button type="button" className="btn btn-ghost" onClick={() => removeItem(item.id)}>
-                  Excluir
-                </button>
+                <div className="cta-row">
+                  <button type="button" className="btn btn-ghost" onClick={() => editItem(item)}>
+                    Editar
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={() => removeItem(item.id)}>
+                    Excluir
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -403,12 +656,26 @@ export default function AdminContentManager() {
           <p className="muted">
             Sincronize eventos externos para curadoria e publique os selecionados na agenda oficial.
           </p>
+          <div className="filters-row">
+            <select value={importedFilter} onChange={(e) => setImportedFilter(e.target.value)}>
+              <option value="all">Todos</option>
+              <option value="imported">Pendentes</option>
+              <option value="published">Publicados</option>
+              <option value="archived">Arquivados</option>
+            </select>
+            <button type="button" className="btn btn-ghost" onClick={() => void loadImportedEvents()}>
+              Atualizar lista
+            </button>
+          </div>
           <div className="cta-row">
             <button type="button" className="btn btn-dark" onClick={syncImportedEvents}>
               Sincronizar agenda externa
             </button>
             <button type="button" className="btn btn-ghost" onClick={publishImportedEvents}>
               Publicar selecionados
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={archiveImportedEvents}>
+              Arquivar selecionados
             </button>
           </div>
           <ul className="admin-list">
@@ -427,7 +694,8 @@ export default function AdminContentManager() {
                   <span>
                     <strong>{event.title}</strong>{" "}
                     <span className="muted">
-                      ({event.source} • {event.startsAt || "sem data"} • {formatImportedStatus(event.status)})
+                      ({event.source} • {event.startsAt || "sem data"} • {event.location || "sem local"} •{" "}
+                      {formatImportedStatus(event.status)})
                     </span>
                   </span>
                 </label>
@@ -437,7 +705,7 @@ export default function AdminContentManager() {
         </div>
       ) : null}
 
-      {status ? <p className="status">{status}</p> : null}
+      {status ? <p className={statusTone === "error" ? "status status-error" : "status"}>{status}</p> : null}
     </section>
   );
 }

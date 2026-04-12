@@ -1,26 +1,17 @@
 # Product roadmap
 
-## Entregue nesta evolução
-- Home institucional com identidade mais madura.
-- Módulos de notícias, eventos, músicas e espiritualidade (listagem + detalhe).
-- Painel admin ampliado para 4 domínios com validação server-side.
-- Tipagem de domínio e serviço central de dados.
-- Metadata base, Open Graph inicial e manifest para PWA.
-- Atualização de documentação técnica e de produto.
-- Fase 1 de integração externa de agenda com sincronização protegida e coleção `eventos_importados`.
+## Entregue neste ciclo
+- Edição de conteúdo no admin (além de criação).
+- Status editorial completo (`draft`, `published`, `archived`).
+- Filtros e busca no admin.
+- Curadoria em lote de eventos importados com publicar/arquivar.
+- Pré-inscrição interna para eventos.
+- Avisos oficiais e banner institucional na home.
+- Busca global de conteúdos (`/busca`).
 
-## Próximo ciclo (curto prazo)
-- edição de conteúdos no admin;
-- filtros avançados e busca por categoria;
-- upload de imagens de capa;
-- skeletons e estados de loading em páginas de listagem;
-- auditoria de acessibilidade.
-- curadoria visual para publicar eventos importados no admin.
-
-## Backlog futuro
-- perfis de usuário e grupos locais;
-- inscrições internas em eventos;
-- push notifications;
-- mural de avisos;
-- analytics de engajamento e funil de conteúdo;
-- gamificação leve para juventude.
+## Próximo ciclo recomendado
+- Aprovação manual de pré-inscrições no admin.
+- Upload de mídia em Firebase Storage com biblioteca de arquivos.
+- Favoritos locais + compartilhamento rápido por página.
+- Página “como participar” + páginas de grupos locais/comunidades.
+- Skeletons e empty states mais ricos por seção.

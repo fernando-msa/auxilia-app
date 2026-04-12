@@ -1,27 +1,25 @@
-# Arquitetura (versão atual)
+# Arquitetura (v2 incremental)
 
 ## Visão geral
-- **Frontend:** Next.js App Router, páginas server-rendered para conteúdo público.
-- **Dados:** Firestore com coleções por domínio (`noticias`, `eventos`, `musicas`, `espiritualidades`).
-- **Admin:** Login Google no client + autorização final no backend (`/api/admin/content`).
-- **Fallback:** conteúdo mock para garantir experiência mínima sem dependência de dados reais.
+- Frontend público em Next.js App Router (SSR).
+- Admin client-side com autenticação Google e autorização server-side.
+- Firestore como base principal com coleções por domínio.
+- Integrações externas de agenda com coleção de curadoria (`eventos_importados`).
+
+## Domínios centrais
+- Conteúdo editorial: `noticias`, `eventos`, `musicas`, `espiritualidades`.
+- Comunicação institucional: `avisos_oficiais`.
+- Engajamento em eventos: `eventos_pre_inscricoes`.
 
 ## Camadas
-- `types/content.ts`: contratos de domínio.
-- `services/content.ts`: leitura e mapeamento dos documentos Firestore para tipos estáveis.
-- `services/integrations/*`: conectores externos e normalização para coleções importadas.
-- `app/*`: páginas e rotas.
-- `app/api/admin/content/route.ts`: governança de publicação.
-- `app/api/integrations/sync/*`: sincronização protegida por segredo.
+- `types/content.ts`: contratos de domínio e status editoriais.
+- `services/content.ts`: mapeamento + fallback + filtragem de publicados.
+- `app/api/admin/content/route.ts`: CRUD administrativo com validação/sanitização.
+- `app/api/admin/integrations/events/route.ts`: sincronização e curadoria em lote.
+- `app/api/eventos/pre-inscricao/route.ts`: captura pré-inscrições.
 
-## Decisões técnicas
-1. **Leitura server-side prioritária** para melhorar SEO e consistência.
-2. **Slug padronizado** gerado no backend.
-3. **Admin com whitelist de e-mails** via `CONTENT_ADMIN_EMAILS`.
-4. **CRUD mínimo viável no admin** (publicar/listar/excluir) com confirmação de exclusão no client.
-
-## Expansão preparada
-- filtros por categoria no servidor;
-- paginação de coleções;
-- papéis editoriais (RBAC avançado);
-- ingestão de conteúdo multimídia.
+## Decisões
+1. Status editorial unificado (`draft/published/archived`) para todos os domínios.
+2. Slug consistente gerado no backend para criação/edição.
+3. Exclusão com confirmação textual (`EXCLUIR`) para reduzir erro operacional.
+4. Publicação pública filtra apenas `published`.

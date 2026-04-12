@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getEvents } from "@/services/content";
 import { formatDate } from "@/components/content-ui";
+import { EventPreSignupForm } from "@/components/EventPreSignupForm";
 
 type DetailPageProps = {
   params: Promise<{ slug: string }>;
@@ -23,6 +24,9 @@ export default async function EventoDetalhe({ params }: DetailPageProps) {
           <strong>Data:</strong> {formatDate(item.startsAt)}
         </p>
         <p>
+          <strong>Status:</strong> {item.lifecycleStatus}
+        </p>
+        <p>
           <strong>Local:</strong> {item.location}
         </p>
         <p>
@@ -35,6 +39,8 @@ export default async function EventoDetalhe({ params }: DetailPageProps) {
             </a>
           </p>
         ) : null}
+
+        <EventPreSignupForm eventId={item.id} eventSlug={item.slug} />
       </article>
     </main>
   );

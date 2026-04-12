@@ -1,27 +1,35 @@
-# Modelo de conteúdo
+# Modelo de conteúdo (v2)
 
 ## Campos comuns
-Todos os módulos compartilham base:
 - `title`, `summary`, `slug`, `category`
-- `status` (`draft|published`)
-- `featured` (`boolean`)
-- `createdAt`, `updatedAt`, `publishedAt`
-- `createdBy`
+- `status`: `draft | published | archived`
+- `coverImage?`, `featured?`
+- `createdAt`, `updatedAt`, `publishedAt`, `createdBy`
 
 ## Coleções
 
 ### `noticias`
-- `content`, `author`
+- `content`, `author?`
 
 ### `eventos`
-- `eventType`, `location`, `audience`, `startsAt`, `endsAt?`, `externalSignupUrl?`
+- `eventType`, `location`, `audience`
+- `startsAt`, `endsAt?`
+- `externalSignupUrl?`
 
 ### `musicas`
-- `songType`, `lyrics`, `youtubeUrl?`, `spotifyUrl?`
+- `songType`, `lyrics`
+- `youtubeUrl?`, `spotifyUrl?`
 
 ### `espiritualidades`
 - `spiritualType`, `content`
 
-## Observações
-- O app mantém compatibilidade com campos legados (`titulo`, `resumo`, etc.) por meio de mapeadores no serviço.
-- Dados de exemplo em `lib/mock-content.ts` são explicitamente demonstrativos.
+### `avisos_oficiais`
+- `title`, `message`, `level` (`info|warning|important`)
+- `startsAt?`, `endsAt?`
+- `ctaLabel?`, `ctaUrl?`
+
+### `eventos_pre_inscricoes`
+- `eventId`, `eventSlug`
+- `name`, `email`, `phone?`, `notes?`
+- `status`: `pending | approved | rejected`
+- `createdAt`, `updatedAt`

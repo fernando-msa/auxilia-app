@@ -24,6 +24,7 @@ const navItems = [
   ["Músicas", "/musicas"],
   ["Eventos", "/eventos"],
   ["Notícias", "/noticias"],
+  ["Busca", "/busca"],
   ["Admin", "/admin"],
 ] as const;
 

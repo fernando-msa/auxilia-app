@@ -154,3 +154,16 @@ h2 { margin: 0 0 .6rem; font-size: clamp(1.5rem, 3vw, 2rem); }
 @media (max-width: 700px) {
   .top-nav-inner { align-items: flex-start; flex-direction: column; }
 }
+
+.filters-row { display:flex; gap:.6rem; flex-wrap:wrap; margin: .8rem 0; }
+.filters-row input, .filters-row select, .form-field select { border:1px solid #cbd5e1; border-radius:.5rem; padding:.5rem; font: inherit; background:#fff; }
+.form-field input[type="file"] { padding:.35rem; }
+.status-error { color: #b91c1c; }
+.notice-banner { border-left:4px solid var(--brand); background:#eff6ff; padding: .9rem; border-radius:.55rem; margin: 1rem 0; }
+.notice-banner.warning { border-left-color:#d97706; background:#fffbeb; }
+.notice-banner.important { border-left-color:#b91c1c; background:#fef2f2; }
+.event-filters { display:flex; gap:.6rem; flex-wrap:wrap; margin: 1rem 0; }
+.event-filters a { text-decoration:none; color:var(--muted); border:1px solid #cbd5e1; border-radius:999px; padding:.3rem .7rem; }
+.event-filters a.active { color:#fff; background:var(--brand); border-color:var(--brand); }
+.pre-signup-form { margin-top:1.2rem; display:grid; gap:.6rem; }
+.pre-signup-form input, .pre-signup-form textarea { width:100%; border:1px solid #cbd5e1; border-radius:.5rem; padding:.55rem; font:inherit; }

@@ -43,12 +43,11 @@ function normalizeText(value: string) {
 
 function buildImportHash(event: ExternalEvent) {
   const payload = [
-    event.externalId,
     normalizeText(event.title),
     normalizeText(event.summary),
     event.startsAt,
     event.endsAt ?? "",
-    event.location ?? "",
+    normalizeText(event.location ?? ""),
   ].join("|");
 
   return createHash("sha256").update(payload).digest("hex");
@@ -72,6 +71,19 @@ function toImportedRecord(event: ExternalEvent, source: string): ImportedEventRe
     status: "imported",
     importedAt: new Date().toISOString(),
   };
+}
+
+function dedupeImportedEvents(items: ImportedEventRecord[]) {
+  const map = new Map<string, ImportedEventRecord>();
+
+  items.forEach((item) => {
+    const key = `${item.importHash}:${item.startsAt}`;
+    if (!map.has(key)) {
+      map.set(key, item);
+    }
+  });
+
+  return [...map.values()];
 }
 
 export async function fetchGoogleCalendarEvents(): Promise<ExternalEvent[]> {
@@ -142,5 +154,5 @@ export async function importEventsFromProviders() {
     warnings.push(result.reason instanceof Error ? result.reason.message : "Falha desconhecida");
   });
 
-  return { imported, warnings };
+  return { imported: dedupeImportedEvents(imported), warnings };
 }

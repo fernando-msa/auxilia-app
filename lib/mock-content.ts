@@ -1,4 +1,10 @@
-import type { EventItem, NewsItem, SongItem, SpiritualContentItem } from "@/types/content";
+import type {
+  EventItem,
+  NewsItem,
+  OfficialNotice,
+  SongItem,
+  SpiritualContentItem,
+} from "@/types/content";
 
 export const mockNews: NewsItem[] = [
   {
@@ -118,5 +124,18 @@ export const mockSpiritualContents: SpiritualContentItem[] = [
     status: "published",
     content: "Senhor, ensina-nos a servir com alegria, simplicidade e coragem missionária.",
     publishedAt: "2026-04-09T09:00:00.000Z",
+  },
+];
+
+export const mockNotices: OfficialNotice[] = [
+  {
+    id: "notice-1",
+    title: "Comunicado oficial",
+    message:
+      "As inscrições para o retiro de inverno abrem nesta semana. Fique atento aos canais do movimento.",
+    level: "important",
+    status: "published",
+    ctaLabel: "Ver agenda",
+    ctaUrl: "/eventos",
   },
 ];
