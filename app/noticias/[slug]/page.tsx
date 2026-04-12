@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
-import { getNews } from "@/services/content";
+import { getNewsBySlug } from "@/services/content";
 import { formatDate } from "@/components/content-ui";
 
 export default async function NoticiaDetalhe({ params }: { params: { slug: string } }) {
   const { slug } = params;
-  const news = await getNews();
-  const item = news.find((entry) => entry.slug === slug);
+  const item = await getNewsBySlug(slug);
 
   if (!item) return notFound();
 

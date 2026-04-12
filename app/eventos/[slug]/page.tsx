@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
-import { getEvents } from "@/services/content";
+import { getEventBySlug } from "@/services/content";
 import { formatDate } from "@/components/content-ui";
 
 export default async function EventoDetalhe({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const events = await getEvents();
-  const item = events.find((entry) => entry.slug === slug);
+  const item = await getEventBySlug(slug);
 
   if (!item) return notFound();
 

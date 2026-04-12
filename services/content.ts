@@ -120,6 +120,16 @@ async function getCollection(collection: SupportedCollection) {
     .filter(({ data }) => data.status === undefined || data.status === "published");
 }
 
+async function getDocumentBySlug(collection: SupportedCollection, slug: string) {
+  const db = getAdminDb();
+  const snapshot = await db.collection(collection).where("slug", "==", slug).limit(1).get();
+  if (snapshot.empty) return null;
+  const doc = snapshot.docs[0];
+  const data = doc.data() as FirestoreDoc;
+  if (data.status !== undefined && data.status !== "published") return null;
+  return { id: doc.id, data };
+}
+
 export async function getNews(): Promise<NewsItem[]> {
   try {
     const docs = await getCollection("noticias");
@@ -157,5 +167,45 @@ export async function getSpiritualContents(): Promise<SpiritualContentItem[]> {
     return docs.map((d) => mapSpiritual(d.id, d.data));
   } catch {
     return mockSpiritualContents;
+  }
+}
+
+export async function getNewsBySlug(slug: string): Promise<NewsItem | null> {
+  try {
+    const doc = await getDocumentBySlug("noticias", slug);
+    if (!doc) return mockNews.find((n) => n.slug === slug) ?? null;
+    return mapNews(doc.id, doc.data);
+  } catch {
+    return mockNews.find((n) => n.slug === slug) ?? null;
+  }
+}
+
+export async function getEventBySlug(slug: string): Promise<EventItem | null> {
+  try {
+    const doc = await getDocumentBySlug("eventos", slug);
+    if (!doc) return mockEvents.find((e) => e.slug === slug) ?? null;
+    return mapEvent(doc.id, doc.data);
+  } catch {
+    return mockEvents.find((e) => e.slug === slug) ?? null;
+  }
+}
+
+export async function getSongBySlug(slug: string): Promise<SongItem | null> {
+  try {
+    const doc = await getDocumentBySlug("musicas", slug);
+    if (!doc) return mockSongs.find((s) => s.slug === slug) ?? null;
+    return mapSong(doc.id, doc.data);
+  } catch {
+    return mockSongs.find((s) => s.slug === slug) ?? null;
+  }
+}
+
+export async function getSpiritualContentBySlug(slug: string): Promise<SpiritualContentItem | null> {
+  try {
+    const doc = await getDocumentBySlug("espiritualidades", slug);
+    if (!doc) return mockSpiritualContents.find((s) => s.slug === slug) ?? null;
+    return mapSpiritual(doc.id, doc.data);
+  } catch {
+    return mockSpiritualContents.find((s) => s.slug === slug) ?? null;
   }
 }

@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
-import { getSpiritualContents } from "@/services/content";
+import { getSpiritualContentBySlug } from "@/services/content";
 
 export default async function EspiritualidadeDetalhe({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const contents = await getSpiritualContents();
-  const item = contents.find((entry) => entry.slug === slug);
+  const item = await getSpiritualContentBySlug(slug);
 
   if (!item) return notFound();
 
