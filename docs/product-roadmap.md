@@ -7,6 +7,7 @@
 - Tipagem de domínio e serviço central de dados.
 - Metadata base, Open Graph inicial e manifest para PWA.
 - Atualização de documentação técnica e de produto.
+- Fase 1 de integração externa de agenda com sincronização protegida e coleção `eventos_importados`.
 
 ## Próximo ciclo (curto prazo)
 - edição de conteúdos no admin;
@@ -14,7 +15,7 @@
 - upload de imagens de capa;
 - skeletons e estados de loading em páginas de listagem;
 - auditoria de acessibilidade.
-- integração de agenda externa para coleção `eventos_importados`.
+- curadoria visual para publicar eventos importados no admin.
 
 ## Backlog futuro
 - perfis de usuário e grupos locais;

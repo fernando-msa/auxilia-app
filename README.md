@@ -21,6 +21,7 @@ Plataforma digital oficial em evolução para apoiar o Movimento Auxilia na evan
   - Músicas (`/musicas`)
   - Espiritualidade (`/espiritualidade`)
 - Painel admin (`/admin`) com autenticação Google + validação no servidor para CRUD básico (publicar/listar/excluir).
+- Curadoria de agenda externa no admin (sincronizar importados e publicar selecionados).
 - Fallback com conteúdo de demonstração quando não há dados no Firestore.
 - Metadata base e `manifest` para evolução de experiência PWA.
 

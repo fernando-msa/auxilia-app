@@ -8,6 +8,7 @@
 6. Conteúdo é sanitizado, recebe `slug`, timestamps e `createdBy`.
 7. Firestore grava documento na coleção correspondente.
 8. Admin pode listar e excluir conteúdos publicados.
+9. Admin também pode sincronizar agenda externa e publicar eventos importados selecionados.
 
 ## Segurança
 - Autorização final sempre no backend.

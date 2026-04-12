@@ -7,6 +7,7 @@ import { auth, googleProvider } from "@/lib/firebase";
 type Tab = "noticias" | "eventos" | "musicas" | "espiritualidades";
 
 type AdminItem = { id: string; title: string; slug?: string; category?: string };
+type ImportedEventItem = { id: string; title: string; startsAt: string; source: string; status: string };
 
 const initialForms: Record<Tab, Record<string, string>> = {
   noticias: { title: "", summary: "", category: "Comunicados", content: "", author: "" },
@@ -43,6 +44,8 @@ export default function AdminContentManager() {
   const [tab, setTab] = useState<Tab>("noticias");
   const [status, setStatus] = useState<string>("");
   const [items, setItems] = useState<AdminItem[]>([]);
+  const [importedEvents, setImportedEvents] = useState<ImportedEventItem[]>([]);
+  const [selectedImported, setSelectedImported] = useState<string[]>([]);
   const [form, setForm] = useState<Record<Tab, Record<string, string>>>(initialForms);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
@@ -92,11 +95,23 @@ export default function AdminContentManager() {
     [authorizedFetch],
   );
 
+  const loadImportedEvents = useCallback(async () => {
+    try {
+      const result = (await authorizedFetch("/api/admin/integrations/events")) as {
+        items?: ImportedEventItem[];
+      };
+      setImportedEvents(result.items ?? []);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Falha ao carregar eventos importados.");
+    }
+  }, [authorizedFetch]);
+
   useEffect(() => {
     if (user) {
       void loadItems(tab);
+      void loadImportedEvents();
     }
-  }, [tab, user, loadItems]);
+  }, [tab, user, loadItems, loadImportedEvents]);
 
   const handleGoogleLogin = async () => {
     setStatus("");
@@ -135,6 +150,44 @@ export default function AdminContentManager() {
       await loadItems(tab);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Erro ao excluir conteúdo.");
+    }
+  };
+
+  const syncImportedEvents = async () => {
+    try {
+      const result = (await authorizedFetch("/api/admin/integrations/events", {
+        method: "POST",
+        body: JSON.stringify({ action: "sync" }),
+      })) as { importedCount?: number; warnings?: string[] };
+
+      const warnings =
+        result.warnings && result.warnings.length
+          ? ` Avisos: ${result.warnings.join(" | ")}`
+          : "";
+      setStatus(`Sincronização concluída. ${result.importedCount ?? 0} evento(s) importado(s).${warnings}`);
+      await loadImportedEvents();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Erro ao sincronizar eventos.");
+    }
+  };
+
+  const publishImportedEvents = async () => {
+    if (!selectedImported.length) {
+      setStatus("Selecione ao menos um evento importado para publicar.");
+      return;
+    }
+
+    try {
+      const result = (await authorizedFetch("/api/admin/integrations/events", {
+        method: "POST",
+        body: JSON.stringify({ action: "publish", ids: selectedImported }),
+      })) as { publishedCount?: number };
+
+      setStatus(`${result.publishedCount ?? 0} evento(s) importado(s) publicado(s) na agenda.`);
+      setSelectedImported([]);
+      await Promise.all([loadImportedEvents(), loadItems("eventos")]);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Erro ao publicar eventos importados.");
     }
   };
 
@@ -210,6 +263,46 @@ export default function AdminContentManager() {
           </button>
         </div>
       )}
+
+      {user ? (
+        <div className="admin-box" style={{ marginTop: "1rem" }}>
+          <h3>Integrações de agenda</h3>
+          <p className="muted">
+            Sincronize eventos externos para curadoria e publique os selecionados na agenda oficial.
+          </p>
+          <div className="cta-row">
+            <button type="button" className="btn btn-dark" onClick={syncImportedEvents}>
+              Sincronizar agenda externa
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={publishImportedEvents}>
+              Publicar selecionados
+            </button>
+          </div>
+          <ul className="admin-list">
+            {importedEvents.map((event) => (
+              <li key={event.id}>
+                <label style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedImported.includes(event.id)}
+                    onChange={(e) =>
+                      setSelectedImported((prev) =>
+                        e.target.checked ? [...prev, event.id] : prev.filter((item) => item !== event.id),
+                      )
+                    }
+                  />
+                  <span>
+                    <strong>{event.title}</strong>{" "}
+                    <span className="muted">
+                      ({event.source} • {event.startsAt || "sem data"} • {event.status})
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {status ? <p className="status">{status}</p> : null}
     </section>

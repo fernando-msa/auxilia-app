@@ -12,6 +12,12 @@ Criar uma base segura para ingestão de eventos externos (agenda) sem publicar a
 - `POST /api/integrations/sync/events`
 - Header obrigatório: `x-sync-secret: <SYNC_API_SECRET>`
 
+## Endpoint administrativo de curadoria
+- `GET /api/admin/integrations/events` lista itens importados.
+- `POST /api/admin/integrations/events` com:
+  - `{ "action": "sync" }` para executar importação;
+  - `{ "action": "publish", "ids": ["id1", "id2"] }` para publicar na coleção `eventos`.
+
 ## Variáveis de ambiente
 - `SYNC_API_SECRET`: segredo para proteger endpoint de sync.
 - `GOOGLE_CALENDAR_ID`: ID do calendário público.
