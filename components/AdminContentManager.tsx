@@ -1,81 +1,149 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
-type Tab = "noticias" | "atividades";
+type Tab = "noticias" | "eventos" | "musicas" | "espiritualidades";
+
+type AdminItem = { id: string; title: string; slug?: string; category?: string };
+
+const initialForms: Record<Tab, Record<string, string>> = {
+  noticias: { title: "", summary: "", category: "Comunicados", content: "", author: "" },
+  eventos: {
+    title: "",
+    summary: "",
+    category: "Agenda",
+    eventType: "outro",
+    location: "",
+    audience: "Jovens",
+    startsAt: "",
+    externalSignupUrl: "",
+  },
+  musicas: {
+    title: "",
+    summary: "",
+    category: "Música",
+    songType: "hino",
+    lyrics: "",
+    youtubeUrl: "",
+    spotifyUrl: "",
+  },
+  espiritualidades: {
+    title: "",
+    summary: "",
+    category: "Espiritualidade",
+    spiritualType: "reflexao",
+    content: "",
+  },
+};
 
 export default function AdminContentManager() {
   const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<Tab>("noticias");
   const [status, setStatus] = useState<string>("");
-
-  const [noticia, setNoticia] = useState({ titulo: "", resumo: "", categoria: "Juventude" });
-  const [atividade, setAtividade] = useState({
-    titulo: "",
-    local: "",
-    data: "",
-    publico: "Jovens",
-  });
+  const [items, setItems] = useState<AdminItem[]>([]);
+  const [form, setForm] = useState<Record<Tab, Record<string, string>>>(initialForms);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  const tabTitle = useMemo(
+    () =>
+      ({
+        noticias: "Notícias",
+        eventos: "Eventos",
+        musicas: "Músicas",
+        espiritualidades: "Espiritualidade",
+      })[tab],
+    [tab],
+  );
+
+  const authorizedFetch = useCallback(
+    async (input: RequestInfo, init?: RequestInit) => {
+      if (!user) throw new Error("Faça login para continuar.");
+
+      const token = await user.getIdToken();
+      const response = await fetch(input, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(init?.headers ?? {}),
+        },
+      });
+
+      const result = (await response.json()) as { error?: string; items?: AdminItem[] };
+
+      if (!response.ok) throw new Error(result.error ?? "Erro na requisição administrativa.");
+      return result;
+    },
+    [user],
+  );
+
+  const loadItems = useCallback(
+    async (currentTab: Tab) => {
+      try {
+        const result = await authorizedFetch(`/api/admin/content?type=${currentTab}`);
+        setItems(result.items ?? []);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Falha ao carregar itens.");
+      }
+    },
+    [authorizedFetch],
+  );
+
+  useEffect(() => {
+    if (user) {
+      void loadItems(tab);
+    }
+  }, [tab, user, loadItems]);
 
   const handleGoogleLogin = async () => {
     setStatus("");
     await signInWithPopup(auth, googleProvider);
-    setStatus("Login realizado. Permissões são validadas no servidor.");
+    setStatus("Login realizado. A autorização é validada no servidor.");
   };
 
-  const publish = async (type: Tab, data: Record<string, string>) => {
-    if (!user) return;
+  const publish = async (event: FormEvent) => {
+    event.preventDefault();
+    setStatus("");
 
-    const token = await user.getIdToken();
-    const response = await fetch("/api/admin/content", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ type, data }),
-    });
+    try {
+      await authorizedFetch("/api/admin/content", {
+        method: "POST",
+        body: JSON.stringify({ type: tab, data: form[tab] }),
+      });
 
-    const result = (await response.json()) as { error?: string };
-    if (!response.ok) {
-      throw new Error(result.error ?? "Falha ao publicar conteúdo.");
+      setStatus(`${tabTitle.slice(0, -1)} publicado com sucesso.`);
+      setForm((prev) => ({ ...prev, [tab]: initialForms[tab] }));
+      await loadItems(tab);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Erro ao publicar conteúdo.");
     }
   };
 
-  const publishNoticia = async (event: FormEvent) => {
-    event.preventDefault();
+  const removeItem = async (id: string) => {
+    const shouldDelete = window.confirm("Deseja realmente excluir este conteúdo?");
+    if (!shouldDelete) return;
 
     try {
-      await publish("noticias", noticia);
-      setNoticia({ titulo: "", resumo: "", categoria: "Juventude" });
-      setStatus("Notícia publicada com sucesso.");
+      await authorizedFetch("/api/admin/content", {
+        method: "DELETE",
+        body: JSON.stringify({ type: tab, id }),
+      });
+      setStatus("Conteúdo excluído com sucesso.");
+      await loadItems(tab);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao publicar notícia.");
-    }
-  };
-
-  const publishAtividade = async (event: FormEvent) => {
-    event.preventDefault();
-
-    try {
-      await publish("atividades", atividade);
-      setAtividade({ titulo: "", local: "", data: "", publico: "Jovens" });
-      setStatus("Atividade publicada com sucesso.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao publicar atividade.");
+      setStatus(error instanceof Error ? error.message : "Erro ao excluir conteúdo.");
     }
   };
 
   return (
-    <section className="section admin-panel">
-      <h2>Publicação de Conteúdo (Equipe)</h2>
+    <section className="admin-panel">
+      <h1>Painel administrativo</h1>
       <p className="section-description">
-        Área para inserir notícias e agenda para os jovens. Autorização de escrita validada no
-        servidor.
+        Gestão segura de notícias, eventos, músicas e conteúdos espirituais com validação
+        server-side via Firebase Admin.
       </p>
 
       {!user ? (
@@ -89,77 +157,53 @@ export default function AdminContentManager() {
           </p>
 
           <div className="tabs">
-            <button
-              type="button"
-              className={tab === "noticias" ? "tab active" : "tab"}
-              onClick={() => setTab("noticias")}
-            >
-              Nova notícia
-            </button>
-            <button
-              type="button"
-              className={tab === "atividades" ? "tab active" : "tab"}
-              onClick={() => setTab("atividades")}
-            >
-              Nova atividade
-            </button>
+            {(Object.keys(initialForms) as Tab[]).map((currentTab) => (
+              <button
+                key={currentTab}
+                type="button"
+                className={tab === currentTab ? "tab active" : "tab"}
+                onClick={() => setTab(currentTab)}
+              >
+                {currentTab}
+              </button>
+            ))}
           </div>
 
-          {tab === "noticias" ? (
-            <form className="form-grid" onSubmit={publishNoticia}>
-              <input
-                required
-                placeholder="Título"
-                value={noticia.titulo}
-                onChange={(e) => setNoticia((prev) => ({ ...prev, titulo: e.target.value }))}
-              />
-              <input
-                required
-                placeholder="Categoria"
-                value={noticia.categoria}
-                onChange={(e) => setNoticia((prev) => ({ ...prev, categoria: e.target.value }))}
-              />
-              <textarea
-                required
-                placeholder="Resumo"
-                value={noticia.resumo}
-                onChange={(e) => setNoticia((prev) => ({ ...prev, resumo: e.target.value }))}
-              />
-              <button type="submit" className="btn btn-dark">
-                Publicar notícia
-              </button>
-            </form>
-          ) : (
-            <form className="form-grid" onSubmit={publishAtividade}>
-              <input
-                required
-                placeholder="Título"
-                value={atividade.titulo}
-                onChange={(e) => setAtividade((prev) => ({ ...prev, titulo: e.target.value }))}
-              />
-              <input
-                required
-                placeholder="Local"
-                value={atividade.local}
-                onChange={(e) => setAtividade((prev) => ({ ...prev, local: e.target.value }))}
-              />
-              <input
-                required
-                placeholder="Data/Hora"
-                value={atividade.data}
-                onChange={(e) => setAtividade((prev) => ({ ...prev, data: e.target.value }))}
-              />
-              <input
-                required
-                placeholder="Público"
-                value={atividade.publico}
-                onChange={(e) => setAtividade((prev) => ({ ...prev, publico: e.target.value }))}
-              />
-              <button type="submit" className="btn btn-dark">
-                Publicar atividade
-              </button>
-            </form>
-          )}
+          <form className="form-grid" onSubmit={publish}>
+            {Object.keys(form[tab]).map((field) => (
+              <label key={field} className="form-field">
+                <span>{field}</span>
+                <input
+                  required={["externalSignupUrl", "youtubeUrl", "spotifyUrl", "author"].indexOf(field) < 0}
+                  value={form[tab][field]}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      [tab]: { ...prev[tab], [field]: e.target.value },
+                    }))
+                  }
+                />
+              </label>
+            ))}
+            <button type="submit" className="btn btn-dark">
+              Publicar {tab}
+            </button>
+          </form>
+
+          <h3>Conteúdos recentes</h3>
+          <ul className="admin-list">
+            {items.map((item) => (
+              <li key={item.id}>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p className="muted">{item.category}</p>
+                </div>
+                <button type="button" className="btn btn-ghost" onClick={() => removeItem(item.id)}>
+                  Excluir
+                </button>
+              </li>
+            ))}
+          </ul>
 
           <button type="button" className="btn btn-ghost" onClick={() => signOut(auth)}>
             Sair
