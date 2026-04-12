@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { getEventBySlug } from "@/services/content";
 import { formatDate } from "@/components/content-ui";
 
-export default async function EventoDetalhe({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function EventoDetalhe({ params }: { params: { slug: string } }) {
+  const { slug } = params;
   const item = await getEventBySlug(slug);
 
   if (!item) return notFound();

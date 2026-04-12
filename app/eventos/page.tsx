@@ -3,7 +3,7 @@ import { ContentGrid, SectionHeader, formatDate } from "@/components/content-ui"
 import { getEvents } from "@/services/content";
 
 export const metadata: Metadata = {
-  title: "Agenda | Auxilia App",
+  title: "Agenda",
   description: "Agenda de eventos, missões, encontros e formações do Auxilia.",
 };
 
