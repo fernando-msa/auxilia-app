@@ -42,8 +42,12 @@ export function ContentGrid({ items, emptyMessage }: { items: CardItem[]; emptyM
 
 export function formatDate(date?: string) {
   if (!date) return "";
+
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return "";
+
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(date));
+  }).format(parsedDate);
 }
