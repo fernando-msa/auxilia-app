@@ -9,8 +9,10 @@
 ## Camadas
 - `types/content.ts`: contratos de domínio.
 - `services/content.ts`: leitura e mapeamento dos documentos Firestore para tipos estáveis.
+- `services/integrations/*`: conectores externos e normalização para coleções importadas.
 - `app/*`: páginas e rotas.
 - `app/api/admin/content/route.ts`: governança de publicação.
+- `app/api/integrations/sync/*`: sincronização protegida por segredo.
 
 ## Decisões técnicas
 1. **Leitura server-side prioritária** para melhorar SEO e consistência.

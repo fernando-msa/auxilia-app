@@ -14,6 +14,7 @@
 - upload de imagens de capa;
 - skeletons e estados de loading em páginas de listagem;
 - auditoria de acessibilidade.
+- integração de agenda externa para coleção `eventos_importados`.
 
 ## Backlog futuro
 - perfis de usuário e grupos locais;

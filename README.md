@@ -49,6 +49,9 @@ Configure `.env.local` com:
 - `FIREBASE_ADMIN_CLIENT_EMAIL`
 - `FIREBASE_ADMIN_PRIVATE_KEY`
 - `CONTENT_ADMIN_EMAILS` (emails separados por vírgula)
+- `SYNC_API_SECRET` (proteção dos endpoints de sincronização)
+- `GOOGLE_CALENDAR_ID` (provider de agenda - opcional)
+- `GOOGLE_CALENDAR_API_KEY` (provider de agenda - opcional)
 
 ## Deploy (Vercel)
 1. Conectar repositório na Vercel.
@@ -68,6 +71,7 @@ Configure `.env.local` com:
 - `docs/architecture.md`
 - `docs/content-model.md`
 - `docs/admin-workflow.md`
+- `docs/integrations.md`
 - `docs/product-roadmap.md`
 
 ## Roadmap rápido
