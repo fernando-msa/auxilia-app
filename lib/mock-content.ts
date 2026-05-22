@@ -5,6 +5,7 @@ import type {
   SongItem,
   SpiritualContentItem,
 } from "@/types/content";
+import type { Aviso } from "@/types/announcements";
 
 export const mockNews: NewsItem[] = [
   {
@@ -137,5 +138,101 @@ export const mockNotices: OfficialNotice[] = [
     status: "published",
     ctaLabel: "Ver agenda",
     ctaUrl: "/eventos",
+  },
+];
+
+export const mockAnnouncements: Aviso[] = [
+  {
+    id: "aviso-1",
+    titulo: "Planejamento de retiro anual",
+    conteudo:
+      "Equipe de coordenadores reunida para estruturar o retiro anual do Auxilia. Datas confirmadas para agosto.",
+    autor: "Maria Silva",
+    data_criacao: "2026-05-20T10:30:00.000Z",
+    categoria: "Organização",
+    status: "published",
+  },
+  {
+    id: "aviso-2",
+    titulo: "Novo grupo de adoração formado",
+    conteudo:
+      "Comunidade de São Paulo iniciou novo grupo de adoração. Reuniões semanais às quintas-feiras.",
+    autor: "João Santos",
+    data_criacao: "2026-05-18T14:15:00.000Z",
+    categoria: "Missão",
+    status: "published",
+  },
+  {
+    id: "aviso-3",
+    titulo: "Encontro de formação em junho",
+    conteudo:
+      "Encontro voltado à formação de líderes, com temática: Liderança servil à luz do carisma salesiano.",
+    autor: "Fernanda Costa",
+    data_criacao: "2026-05-15T09:00:00.000Z",
+    categoria: "Formação",
+    status: "published",
+  },
+];
+
+export const mockCalendarEvents: EventItem[] = [
+  {
+    id: "cal-event-1",
+    type: "event",
+    slug: "retiro-venceslaismo",
+    title: "Retiro do Venceslaismo",
+    summary: "Encontro de jovens para aprofundamento espiritual e fraternidade.",
+    category: "Retiro",
+    eventType: "retiro",
+    status: "published",
+    location: "Serra Negra - SP",
+    audience: "Jovens 18+",
+    startsAt: "2026-06-20T08:00:00.000Z",
+    endsAt: "2026-06-22T18:00:00.000Z",
+    publishedAt: "2026-05-01T00:00:00.000Z",
+  },
+  {
+    id: "cal-event-2",
+    type: "event",
+    slug: "missao-solidaria-junho",
+    title: "Missão Solidária - Zona Leste SP",
+    summary: "Ação missionária com visitação domiciliar e evangelização.",
+    category: "Missão",
+    eventType: "missao",
+    status: "published",
+    location: "São Paulo - SP",
+    audience: "Voluntários 16+",
+    startsAt: "2026-06-27T08:00:00.000Z",
+    endsAt: "2026-06-27T17:00:00.000Z",
+    publishedAt: "2026-05-02T00:00:00.000Z",
+  },
+  {
+    id: "cal-event-3",
+    type: "event",
+    slug: "adoracao-central",
+    title: "Adoração Juvenil Central",
+    summary: "Noite de louvor, oração e comunhão.",
+    category: "Adoração",
+    eventType: "adoracao",
+    status: "published",
+    location: "Igreja Matriz",
+    audience: "Jovens e famílias",
+    startsAt: "2026-05-30T20:00:00.000Z",
+    endsAt: "2026-05-30T22:30:00.000Z",
+    publishedAt: "2026-05-05T00:00:00.000Z",
+  },
+  {
+    id: "cal-event-4",
+    type: "event",
+    slug: "formacao-dinamica-julho",
+    title: "Formação Dinâmica - Carisma Salesiano",
+    summary: "Workshop formativo com especialistas em espiritualidade juvenil.",
+    category: "Formação",
+    eventType: "formacao",
+    status: "published",
+    location: "Centro de Convivência Salesiano",
+    audience: "Líderes e interessados",
+    startsAt: "2026-07-10T09:00:00.000Z",
+    endsAt: "2026-07-10T17:00:00.000Z",
+    publishedAt: "2026-05-03T00:00:00.000Z",
   },
 ];

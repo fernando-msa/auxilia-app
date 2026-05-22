@@ -66,9 +66,64 @@ export default async function Home() {
 
       <section className="section">
         <SectionHeader
-          title="Sobre o Movimento Auxilia"
-          description="Iniciativa católica de inspiração salesiana que promove evangelização da juventude, espiritualidade mariana, música e fraternidade."
+          title="Quem Somos"
+          description="Conheça o Movimento Auxilia e nossa missão"
         />
+
+        <div className="about-content">
+          <article className="about-section">
+            <h3>Nossa Missão</h3>
+            <p>
+              O Movimento Auxilia é uma iniciativa católica de inspiração salesiana dedicada à evangelização
+              e formação integral da juventude. Buscamos acompanhar jovens em seu caminho de fé, oferecendo
+              espaços de espiritualidade, formação e fraternidade.
+            </p>
+          </article>
+
+          <div className="pillars-grid">
+            <article className="pillar">
+              <h4>🙏 Espiritualidade</h4>
+              <p>Devoção mariana, oração pessoal e comunitária, acompanhamento espiritual e formação católica.</p>
+            </article>
+
+            <article className="pillar">
+              <h4>🎵 Música e Louvor</h4>
+              <p>Repertório próprio para encontros, atividades, adoração e animação missionária da juventude.</p>
+            </article>
+
+            <article className="pillar">
+              <h4>🤝 Fraternidade</h4>
+              <p>Comunidade viva onde jovens caminham juntos, compartilham valores e se apoiam na missão.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="section alt">
+        <SectionHeader
+          title="Nosso Impacto"
+          description="Estatísticas e números que refletem o compromisso do Movimento Auxilia"
+        />
+
+        <div className="dashboard-visual">
+          <div className="stat-card">
+            <div className="stat-number">2.450+</div>
+            <div className="stat-label">Membros Ativos</div>
+            <p className="stat-description">Jovens engajados em diferentes comunidades</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-number">1.200+</div>
+            <div className="stat-label">Eventos Realizados</div>
+            <p className="stat-description">Retiros, missões, adorações e encontros de formação</p>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-number">850+</div>
+            <div className="stat-label">Voluntários</div>
+            <p className="stat-description">Pessoas que dedicam tempo e talentos à missão</p>
+          </div>
+        </div>
       </section>
 
       <section id="espiritualidade" className="section alt">
@@ -148,8 +203,11 @@ export default async function Home() {
           description="Acompanhe os canais oficiais, divulgue iniciativas locais e caminhe com o Auxilia."
         />
         <div className="cta-row">
-          <Link className="btn" href="/admin">
-            Área administrativa
+          <Link className="btn" href="/quero-ajudar">
+            ✨ Quero Ajudar
+          </Link>
+          <Link className="btn btn-alt" href="/dashboard/avisos">
+            Entrar no Dashboard
           </Link>
           <a
             className="btn btn-alt btn-outline"
