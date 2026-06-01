@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
@@ -7,7 +8,14 @@ function hasSyncAccess(request: Request) {
   const expectedSecret = process.env.SYNC_API_SECRET;
   const receivedSecret = request.headers.get("x-sync-secret");
 
-  return Boolean(expectedSecret && receivedSecret && expectedSecret === receivedSecret);
+  if (!expectedSecret || !receivedSecret) return false;
+
+  const expected = Buffer.from(expectedSecret);
+  const received = Buffer.from(receivedSecret);
+
+  if (expected.length !== received.length) return false;
+
+  return timingSafeEqual(expected, received);
 }
 
 export async function POST(request: Request) {

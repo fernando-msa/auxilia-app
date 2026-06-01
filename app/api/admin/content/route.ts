@@ -1,158 +1,29 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminDb } from "@/lib/firebaseAdmin";
-import type { ContentStatus, SupportedCollection } from "@/types/content";
+import { getAdminDb } from "@/lib/firebaseAdmin";
+import { validateAdminRequest } from "@/lib/auth";
+import { contentSchemas, contentStatusSchema, deleteSchema, toSlug } from "@/lib/validation";
+import { checkRateLimit } from "@/lib/rate-limit";
+import type { SupportedCollection } from "@/types/content";
 
-type ContentFormData = Record<string, string>;
+const allCollections = new Set(Object.keys(contentSchemas));
 
-type SavePayload = {
-  type: SupportedCollection;
-  data: ContentFormData;
-  id?: string;
-};
-
-const allowedCollections: Record<SupportedCollection, string[]> = {
-  noticias: ["title", "summary", "category", "content", "author", "coverImage"],
-  eventos: [
-    "title",
-    "summary",
-    "category",
-    "eventType",
-    "location",
-    "audience",
-    "startsAt",
-    "endsAt",
-    "externalSignupUrl",
-    "coverImage",
-  ],
-  musicas: [
-    "title",
-    "summary",
-    "category",
-    "songType",
-    "lyrics",
-    "youtubeUrl",
-    "spotifyUrl",
-    "coverImage",
-  ],
-  espiritualidades: [
-    "title",
-    "summary",
-    "category",
-    "spiritualType",
-    "content",
-    "coverImage",
-  ],
-  avisos_oficiais: ["title", "message", "level", "startsAt", "endsAt", "ctaLabel", "ctaUrl"],
-};
-
-const optionalFields = [
-  "externalSignupUrl",
-  "youtubeUrl",
-  "spotifyUrl",
-  "author",
-  "endsAt",
-  "coverImage",
-  "ctaLabel",
-  "ctaUrl",
-  "startsAt",
-  "endsAt",
-];
-
-const allowedStatus: ContentStatus[] = ["draft", "published", "archived"];
-
-function getAllowedEmails() {
-  const raw = process.env.CONTENT_ADMIN_EMAILS ?? "";
-  return raw
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function toSlug(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
-
-function normalizeStatus(input?: string): ContentStatus {
-  if (!input) return "draft";
-  if (allowedStatus.includes(input as ContentStatus)) {
-    return input as ContentStatus;
-  }
-  throw new Error(`Status inválido: ${input}`);
-}
-
-function sanitizePayload(payload: SavePayload) {
-  const keys = allowedCollections[payload.type];
-  const cleanData: Record<string, string | boolean> = {};
-
-  keys.forEach((key) => {
-    const value = payload.data[key];
-    const isOptional = optionalFields.includes(key);
-
-    if (!isOptional && (typeof value !== "string" || !value.trim())) {
-      throw new Error(`Campo obrigatório inválido: ${key}`);
-    }
-
-    if (typeof value === "string" && value.trim()) {
-      cleanData[key] = value.trim();
-    }
-  });
-
-  cleanData.slug =
-    typeof cleanData.title === "string" ? toSlug(cleanData.title) : toSlug(String(Date.now()));
-  cleanData.status = normalizeStatus(payload.data.status);
-
-  return cleanData;
-}
-
-function normalizeAdminError(message: string) {
-  const isConfigError =
-    message.includes("FIREBASE_ADMIN_PROJECT_ID") ||
-    message.includes("FIREBASE_ADMIN_CLIENT_EMAIL") ||
-    message.includes("FIREBASE_ADMIN_PRIVATE_KEY");
-
-  return {
-    message: isConfigError
-      ? "Configuração do Firebase Admin ausente no servidor. Verifique FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL e FIREBASE_ADMIN_PRIVATE_KEY."
-      : message,
-    status: isConfigError ? 503 : 500,
-  };
-}
-
-async function validateRequest(request: Request) {
-  const token = request.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) {
-    return { error: NextResponse.json({ error: "Token não enviado." }, { status: 401 }) };
-  }
-
-  const decoded = await getAdminAuth().verifyIdToken(token);
-  const userEmail = decoded.email?.toLowerCase();
-  const allowedEmails = getAllowedEmails();
-
-  if (!userEmail || !allowedEmails.includes(userEmail)) {
-    return {
-      error: NextResponse.json({ error: "Usuário sem permissão para administrar conteúdos." }, { status: 403 }),
-    };
-  }
-
-  return { userEmail };
+function getClientIp(request: Request): string {
+  return request.headers.get("x-forwarded-for") ?? "unknown";
 }
 
 export async function GET(request: Request) {
   try {
-    const validated = await validateRequest(request);
+    if (!checkRateLimit(`admin:${getClientIp(request)}`)) {
+      return NextResponse.json({ error: "Muitas requisições." }, { status: 429 });
+    }
+
+    const validated = await validateAdminRequest(request);
     if ("error" in validated) return validated.error;
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") as SupportedCollection;
-    if (!type || !(type in allowedCollections)) {
+    if (!type || !allCollections.has(type)) {
       return NextResponse.json({ error: "Tipo inválido." }, { status: 400 });
     }
 
@@ -184,59 +55,98 @@ export async function GET(request: Request) {
     return NextResponse.json({ items });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado.";
-    const normalized = normalizeAdminError(message);
-    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const validated = await validateRequest(request);
-    if ("error" in validated) return validated.error;
-
-    const body = (await request.json()) as SavePayload;
-    if (!body?.type || !(body.type in allowedCollections) || !body?.data) {
-      return NextResponse.json({ error: "Payload inválido." }, { status: 400 });
+    if (!checkRateLimit(`admin:${getClientIp(request)}`)) {
+      return NextResponse.json({ error: "Muitas requisições." }, { status: 429 });
     }
 
-    const data = sanitizePayload(body);
+    const validated = await validateAdminRequest(request);
+    if ("error" in validated) return validated.error;
 
-    await getAdminDb().collection(body.type).add({
-      ...data,
-      publishedAt: data.status === "published" ? FieldValue.serverTimestamp() : null,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      createdBy: validated.userEmail,
-    });
+    const body = await request.json();
+    const type = body?.type as SupportedCollection;
+
+    if (!type || !allCollections.has(type)) {
+      return NextResponse.json({ error: "Tipo inválido." }, { status: 400 });
+    }
+
+    const schema = contentSchemas[type];
+    const result = schema.safeParse(body.data);
+
+    if (!result.success) {
+      const errors = result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+      return NextResponse.json({ error: "Dados inválidos.", details: errors }, { status: 400 });
+    }
+
+    const statusResult = contentStatusSchema.safeParse(body.data.status ?? "draft");
+    const status = statusResult.success ? statusResult.data : "draft";
+
+    const data: Record<string, unknown> = { ...result.data };
+    data.slug = toSlug(String(data.title));
+    data.status = status;
+
+    await getAdminDb()
+      .collection(type)
+      .add({
+        ...data,
+        publishedAt: status === "published" ? FieldValue.serverTimestamp() : null,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        createdBy: validated.userEmail,
+      });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado.";
-    const normalized = normalizeAdminError(message);
-    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    const validated = await validateRequest(request);
-    if ("error" in validated) return validated.error;
-
-    const body = (await request.json()) as SavePayload;
-    if (!body?.id || !body?.type || !(body.type in allowedCollections) || !body?.data) {
-      return NextResponse.json({ error: "Payload inválido para atualização." }, { status: 400 });
+    if (!checkRateLimit(`admin:${getClientIp(request)}`)) {
+      return NextResponse.json({ error: "Muitas requisições." }, { status: 429 });
     }
 
-    const data = sanitizePayload(body);
+    const validated = await validateAdminRequest(request);
+    if ("error" in validated) return validated.error;
+
+    const body = await request.json();
+    const type = body?.type as SupportedCollection;
+    const docId = body?.id as string;
+
+    if (!type || !allCollections.has(type) || !docId) {
+      return NextResponse.json({ error: "Payload inválido." }, { status: 400 });
+    }
+
+    const schema = contentSchemas[type];
+    const result = schema.safeParse(body.data);
+
+    if (!result.success) {
+      const errors = result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+      return NextResponse.json({ error: "Dados inválidos.", details: errors }, { status: 400 });
+    }
+
+    const statusResult = contentStatusSchema.safeParse(body.data.status ?? "draft");
+    const status = statusResult.success ? statusResult.data : "draft";
+
+    const data: Record<string, unknown> = { ...result.data };
+    data.slug = toSlug(String(data.title));
+    data.status = status;
 
     await getAdminDb()
-      .collection(body.type)
-      .doc(body.id)
+      .collection(type)
+      .doc(docId)
       .set(
         {
           ...data,
+          publishedAt: status === "published" ? FieldValue.serverTimestamp() : null,
           updatedAt: FieldValue.serverTimestamp(),
-          ...(data.status === "published" ? { publishedAt: FieldValue.serverTimestamp() } : {}),
         },
         { merge: true },
       );
@@ -244,33 +154,30 @@ export async function PUT(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado.";
-    const normalized = normalizeAdminError(message);
-    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const validated = await validateRequest(request);
+    if (!checkRateLimit(`admin:${getClientIp(request)}`)) {
+      return NextResponse.json({ error: "Muitas requisições." }, { status: 429 });
+    }
+
+    const validated = await validateAdminRequest(request);
     if ("error" in validated) return validated.error;
 
-    const body = (await request.json()) as { type: SupportedCollection; id: string; confirmText?: string };
-    if (!body?.id || !body?.type || !(body.type in allowedCollections)) {
+    const body = await request.json();
+    const result = deleteSchema.safeParse(body);
+
+    if (!result.success) {
       return NextResponse.json({ error: "Payload inválido para exclusão." }, { status: 400 });
     }
 
-    if (body.confirmText !== "EXCLUIR") {
-      return NextResponse.json(
-        { error: "Confirmação inválida. Digite EXCLUIR para remover conteúdo." },
-        { status: 400 },
-      );
-    }
-
-    await getAdminDb().collection(body.type).doc(body.id).delete();
+    await getAdminDb().collection(result.data.type).doc(result.data.id).delete();
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado.";
-    const normalized = normalizeAdminError(message);
-    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

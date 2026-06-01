@@ -1,63 +1,22 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminDb } from "@/lib/firebaseAdmin";
+import { getAdminDb } from "@/lib/firebaseAdmin";
+import { validateAdminRequest } from "@/lib/auth";
+import { integrationsActionSchema, toSlug } from "@/lib/validation";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { importEventsFromProviders } from "@/services/integrations/events";
 
-function getAllowedEmails() {
-  const raw = process.env.CONTENT_ADMIN_EMAILS ?? "";
-  return raw
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-async function validateRequest(request: Request) {
-  const token = request.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) {
-    return { error: NextResponse.json({ error: "Token não enviado." }, { status: 401 }) };
-  }
-
-  const decoded = await getAdminAuth().verifyIdToken(token);
-  const userEmail = decoded.email?.toLowerCase();
-
-  if (!userEmail || !getAllowedEmails().includes(userEmail)) {
-    return {
-      error: NextResponse.json({ error: "Usuário sem permissão." }, { status: 403 }),
-    };
-  }
-
-  return { userEmail };
-}
-
-function toSlug(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
-
-function normalizeApiError(error: unknown) {
-  const message = error instanceof Error ? error.message : "Erro inesperado.";
-  const isConfigError =
-    message.includes("FIREBASE_ADMIN_PROJECT_ID") ||
-    message.includes("FIREBASE_ADMIN_CLIENT_EMAIL") ||
-    message.includes("FIREBASE_ADMIN_PRIVATE_KEY");
-
-  return {
-    message: isConfigError
-      ? "Configuração do Firebase Admin ausente no servidor. Verifique variáveis de ambiente."
-      : message,
-    status: isConfigError ? 503 : 500,
-  };
+function getClientIp(request: Request): string {
+  return request.headers.get("x-forwarded-for") ?? "unknown";
 }
 
 export async function GET(request: Request) {
   try {
-    const validated = await validateRequest(request);
+    if (!checkRateLimit(`admin:${getClientIp(request)}`)) {
+      return NextResponse.json({ error: "Muitas requisições." }, { status: 429 });
+    }
+
+    const validated = await validateAdminRequest(request);
     if ("error" in validated) return validated.error;
 
     const { searchParams } = new URL(request.url);
@@ -85,24 +44,30 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    const normalized = normalizeApiError(error);
-    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
+    const message = error instanceof Error ? error.message : "Erro inesperado.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const validated = await validateRequest(request);
+    if (!checkRateLimit(`admin:${getClientIp(request)}`)) {
+      return NextResponse.json({ error: "Muitas requisições." }, { status: 429 });
+    }
+
+    const validated = await validateAdminRequest(request);
     if ("error" in validated) return validated.error;
 
-    const body = (await request.json()) as
-      | { action: "sync" }
-      | { action: "publish"; ids: string[] }
-      | { action: "archive"; ids: string[] };
+    const body = await request.json();
+    const result = integrationsActionSchema.safeParse(body);
+
+    if (!result.success) {
+      return NextResponse.json({ error: "Ação inválida." }, { status: 400 });
+    }
 
     const db = getAdminDb();
 
-    if (body.action === "sync") {
+    if (result.data.action === "sync") {
       const { imported, warnings } = await importEventsFromProviders();
       await Promise.all(
         imported.map((item) =>
@@ -122,14 +87,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, importedCount: imported.length, warnings });
     }
 
-    if (body.action === "archive") {
-      const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
-      if (!ids.length) {
-        return NextResponse.json({ error: "Nenhum ID enviado para arquivamento." }, { status: 400 });
-      }
-
+    if (result.data.action === "archive") {
       await Promise.all(
-        ids.map((id) =>
+        result.data.ids.map((id) =>
           db.collection("eventos_importados").doc(id).set(
             {
               status: "archived",
@@ -141,16 +101,13 @@ export async function POST(request: Request) {
         ),
       );
 
-      return NextResponse.json({ ok: true, archivedCount: ids.length });
+      return NextResponse.json({ ok: true, archivedCount: result.data.ids.length });
     }
 
-    if (body.action === "publish") {
-      const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
-      if (!ids.length) {
-        return NextResponse.json({ error: "Nenhum ID enviado para publicação." }, { status: 400 });
-      }
-
-      const docs = await Promise.all(ids.map((id) => db.collection("eventos_importados").doc(id).get()));
+    if (result.data.action === "publish") {
+      const docs = await Promise.all(
+        result.data.ids.map((id) => db.collection("eventos_importados").doc(id).get()),
+      );
 
       const writes = docs
         .filter((doc) => doc.exists)
@@ -170,7 +127,7 @@ export async function POST(request: Request) {
                 endsAt: typeof data.endsAt === "string" ? data.endsAt : null,
                 externalSignupUrl:
                   typeof data.externalSignupUrl === "string" ? data.externalSignupUrl : null,
-                slug: typeof data.title === "string" ? toSlug(String(data.title)) : doc.id,
+                slug: typeof data.title === "string" ? toSlug(data.title) : doc.id,
                 status: "published",
                 createdBy: validated.userEmail,
                 createdAt: FieldValue.serverTimestamp(),
@@ -198,7 +155,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Ação inválida." }, { status: 400 });
   } catch (error) {
-    const normalized = normalizeApiError(error);
-    return NextResponse.json({ error: normalized.message }, { status: normalized.status });
+    const message = error instanceof Error ? error.message : "Erro inesperado.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
