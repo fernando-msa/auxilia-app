@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Painel administrativo para gestão de notícias, eventos, músicas e espiritualidade.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function AdminPage() {
   return (
     <main className="section">
