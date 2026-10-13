@@ -72,6 +72,35 @@ export const integrationsActionSchema = z.discriminatedUnion("action", [
 
 export const contentStatusSchema = z.enum(["draft", "published", "archived"]);
 
+export const voluntarioSchema = z.object({
+  nome: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres").max(200, "Nome muito longo"),
+  email: z.string().trim().email("E-mail inválido").max(254),
+  whatsapp: z
+    .string()
+    .trim()
+    .transform((val) => val.replace(/\D/g, ""))
+    .refine((val) => /^(\d{10,11})$/.test(val), {
+      message: "WhatsApp deve ter 10 ou 11 dígitos com DDD numérico",
+    }),
+  cidade: optionalString(100),
+  estado: optionalString(2),
+  como_ajudar: z
+    .string()
+    .trim()
+    .min(5, "Informe como deseja ajudar")
+    .max(2000, "Texto muito longo (máximo 2000 caracteres)"),
+  consentimentoLgpd: z.boolean().optional().default(true),
+});
+
+export const eventoPreInscricaoSchema = z.object({
+  eventId: z.string().trim().min(1, "ID do evento obrigatório").max(200),
+  eventSlug: z.string().trim().min(1, "Slug do evento obrigatório").max(200),
+  name: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres").max(200, "Nome muito longo"),
+  email: z.string().trim().email("E-mail inválido").max(254),
+  phone: optionalString(30),
+  notes: optionalString(1000),
+});
+
 export function toSlug(value: string): string {
   return value
     .normalize("NFD")
@@ -82,3 +111,4 @@ export function toSlug(value: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
 }
+

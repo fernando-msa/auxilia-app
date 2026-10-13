@@ -1,46 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createVolunteer } from "@/services/volunteers";
-import type { VoluntarioFormData } from "@/types/volunteers";
+import { voluntarioSchema } from "@/lib/validation";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-
-    // Validate that required fields exist
-    if (!body.nome || !body.email || !body.whatsapp || !body.como_ajudar) {
+    // Rate limit: máximo de 5 cadastros por minuto por IP para evitar spam
+    const clientIp = getClientIp(request);
+    if (!checkRateLimit(`voluntarios:${clientIp}`, 5, 60_000)) {
       return NextResponse.json(
-        { success: false, error: "Campos obrigatórios ausentes" },
+        { success: false, error: "Muitas tentativas. Por favor, aguarde um momento." },
+        { status: 429 }
+      );
+    }
+
+    const body = await request.json();
+    const result = voluntarioSchema.safeParse(body);
+
+    if (!result.success) {
+      const errorMsg = result.error.issues.map((i) => i.message).join(", ");
+      return NextResponse.json(
+        { success: false, error: errorMsg },
         { status: 400 }
       );
     }
 
-    const formData: VoluntarioFormData = {
-      nome: body.nome,
-      email: body.email,
-      whatsapp: body.whatsapp,
-      cidade: body.cidade || "",
-      estado: body.estado || "",
-      como_ajudar: body.como_ajudar,
-    };
+    const volunteerResult = await createVolunteer({
+      nome: result.data.nome,
+      email: result.data.email,
+      whatsapp: result.data.whatsapp,
+      cidade: result.data.cidade ?? "",
+      estado: result.data.estado ?? "",
+      como_ajudar: result.data.como_ajudar,
+    });
 
-    const result = await createVolunteer(formData);
 
-    if (result.success) {
+    if (volunteerResult.success) {
       return NextResponse.json(
-        { success: true, id: result.id },
+        { success: true, id: volunteerResult.id },
         { status: 201 }
       );
     } else {
       return NextResponse.json(
-        { success: false, error: result.error },
+        { success: false, error: volunteerResult.error },
         { status: 400 }
       );
     }
   } catch (error) {
-    console.error("API error:", error);
+    console.error("API error /voluntarios:", error);
     return NextResponse.json(
       { success: false, error: "Erro interno do servidor" },
       { status: 500 }
     );
   }
 }
+

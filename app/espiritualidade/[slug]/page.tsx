@@ -1,14 +1,35 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getSpiritualContents } from "@/services/content";
+import { getSpiritualBySlug } from "@/services/content";
+
+export const revalidate = 60;
 
 type DetailPageProps = {
   params: Promise<{ slug: string }>;
 };
 
+export async function generateMetadata({ params }: DetailPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const item = await getSpiritualBySlug(slug);
+
+  if (!item) {
+    return { title: "Conteúdo não encontrado | Auxilia" };
+  }
+
+  return {
+    title: `${item.title} | Auxilia`,
+    description: item.summary,
+    openGraph: {
+      title: item.title,
+      description: item.summary,
+      images: item.coverImage ? [item.coverImage] : [],
+    },
+  };
+}
+
 export default async function EspiritualidadeDetalhe({ params }: DetailPageProps) {
   const { slug } = await params;
-  const contents = await getSpiritualContents();
-  const item = contents.find((entry) => entry.slug === slug);
+  const item = await getSpiritualBySlug(slug);
 
   if (!item) return notFound();
 
@@ -23,3 +44,4 @@ export default async function EspiritualidadeDetalhe({ params }: DetailPageProps
     </main>
   );
 }
+

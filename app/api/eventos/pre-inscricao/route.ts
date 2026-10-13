@@ -1,39 +1,35 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
-
-type Payload = {
-  eventId: string;
-  eventSlug: string;
-  name: string;
-  email: string;
-  phone?: string;
-  notes?: string;
-};
-
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
+import { eventoPreInscricaoSchema } from "@/lib/validation";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Payload;
-
-    if (!body.eventId || !body.eventSlug || !body.name || !body.email) {
-      return NextResponse.json({ error: "Dados obrigatórios ausentes." }, { status: 400 });
+    // Rate limit: máximo de 10 pré-inscrições por minuto por IP
+    const clientIp = getClientIp(request);
+    if (!checkRateLimit(`pre-inscricao:${clientIp}`, 10, 60_000)) {
+      return NextResponse.json(
+        { error: "Muitas tentativas. Por favor, aguarde um momento." },
+        { status: 429 }
+      );
     }
 
-    if (!isValidEmail(body.email)) {
-      return NextResponse.json({ error: "E-mail inválido." }, { status: 400 });
+    const body = await request.json();
+    const result = eventoPreInscricaoSchema.safeParse(body);
+
+    if (!result.success) {
+      const errorMsg = result.error.issues.map((i) => i.message).join(", ");
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
 
     await getAdminDb().collection("eventos_pre_inscricoes").add({
-      eventId: body.eventId,
-      eventSlug: body.eventSlug,
-      name: body.name,
-      email: body.email,
-      phone: body.phone ?? null,
-      notes: body.notes ?? null,
+      eventId: result.data.eventId,
+      eventSlug: result.data.eventSlug,
+      name: result.data.name,
+      email: result.data.email,
+      phone: result.data.phone ?? null,
+      notes: result.data.notes ?? null,
       status: "pending",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
@@ -45,3 +41,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

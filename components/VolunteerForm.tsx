@@ -141,7 +141,17 @@ export function VolunteerForm() {
           type="tel"
           name="whatsapp"
           value={formData.whatsapp}
-          onChange={handleChange}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+            let masked = raw;
+            if (raw.length > 2) {
+              masked = `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+            }
+            if (raw.length > 7) {
+              masked = `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7)}`;
+            }
+            setFormData((prev) => ({ ...prev, whatsapp: masked }));
+          }}
           placeholder="(11) 99999-9999"
           required
         />
@@ -157,6 +167,7 @@ export function VolunteerForm() {
             value={formData.cidade}
             onChange={handleChange}
             placeholder="São Paulo"
+            maxLength={100}
           />
         </div>
 
@@ -187,8 +198,18 @@ export function VolunteerForm() {
           onChange={handleChange}
           placeholder="Conte-nos sobre seu interesse em contribuir com o Movimento Auxilia..."
           rows={5}
+          maxLength={2000}
           required
         />
+      </div>
+
+      <div className="form-field checkbox-field">
+        <label style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", fontSize: "0.85rem", color: "var(--muted)" }}>
+          <input type="checkbox" required defaultChecked style={{ marginTop: "0.2rem" }} />
+          <span>
+            Concordo com o armazenamento dos meus dados de contato exclusivamente para que a coordenação do Movimento Auxilia possa retornar o contato, nos termos da Lei Geral de Proteção de Dados (LGPD).
+          </span>
+        </label>
       </div>
 
       {status.type !== "idle" && (
@@ -201,5 +222,6 @@ export function VolunteerForm() {
         {status.type === "loading" ? "Enviando..." : "Quero ajudar!"}
       </button>
     </form>
+
   );
 }

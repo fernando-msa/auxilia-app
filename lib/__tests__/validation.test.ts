@@ -180,3 +180,95 @@ describe("integrationsActionSchema", () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe("voluntarioSchema", () => {
+  const validVolunteer = {
+    nome: "Maria Silva",
+    email: "maria@example.com",
+    whatsapp: "11999998888",
+    cidade: "São Paulo",
+    estado: "SP",
+    como_ajudar: "Gostaria de ajudar na equipe de música e animação.",
+  };
+
+  it("accepts valid volunteer registration", async () => {
+    const { voluntarioSchema } = await import("@/lib/validation");
+    const result = voluntarioSchema.safeParse(validVolunteer);
+    expect(result.success).toBe(true);
+  });
+
+  it("sanitizes whatsapp formatting automatically", async () => {
+    const { voluntarioSchema } = await import("@/lib/validation");
+    const result = voluntarioSchema.safeParse({
+      ...validVolunteer,
+      whatsapp: "(11) 99999-8888",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.whatsapp).toBe("11999998888");
+    }
+  });
+
+  it("rejects invalid whatsapp number", async () => {
+    const { voluntarioSchema } = await import("@/lib/validation");
+    const result = voluntarioSchema.safeParse({
+      ...validVolunteer,
+      whatsapp: "123",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid email", async () => {
+    const { voluntarioSchema } = await import("@/lib/validation");
+    const result = voluntarioSchema.safeParse({
+      ...validVolunteer,
+      email: "email-invalido",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects short help description", async () => {
+    const { voluntarioSchema } = await import("@/lib/validation");
+    const result = voluntarioSchema.safeParse({
+      ...validVolunteer,
+      como_ajudar: "Oi",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("eventoPreInscricaoSchema", () => {
+  const validSignup = {
+    eventId: "evt-123",
+    eventSlug: "retiro-2026",
+    name: "Carlos Santos",
+    email: "carlos@example.com",
+    phone: "(11) 98888-7777",
+    notes: "Primeira vez participando",
+  };
+
+  it("accepts valid pre-signup", async () => {
+    const { eventoPreInscricaoSchema } = await import("@/lib/validation");
+    const result = eventoPreInscricaoSchema.safeParse(validSignup);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects missing eventId or eventSlug", async () => {
+    const { eventoPreInscricaoSchema } = await import("@/lib/validation");
+    const result = eventoPreInscricaoSchema.safeParse({
+      ...validSignup,
+      eventId: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid email", async () => {
+    const { eventoPreInscricaoSchema } = await import("@/lib/validation");
+    const result = eventoPreInscricaoSchema.safeParse({
+      ...validSignup,
+      email: "invalid-email",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+

@@ -3,12 +3,9 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 import { validateAdminRequest } from "@/lib/auth";
 import { integrationsActionSchema, toSlug } from "@/lib/validation";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { importEventsFromProviders } from "@/services/integrations/events";
 
-function getClientIp(request: Request): string {
-  return request.headers.get("x-forwarded-for") ?? "unknown";
-}
 
 export async function GET(request: Request) {
   try {

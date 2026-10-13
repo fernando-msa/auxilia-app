@@ -3,14 +3,11 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 import { validateAdminRequest } from "@/lib/auth";
 import { contentSchemas, contentStatusSchema, deleteSchema, toSlug } from "@/lib/validation";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { SupportedCollection } from "@/types/content";
 
 const allCollections = new Set(Object.keys(contentSchemas));
 
-function getClientIp(request: Request): string {
-  return request.headers.get("x-forwarded-for") ?? "unknown";
-}
 
 export async function GET(request: Request) {
   try {

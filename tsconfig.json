@@ -23,14 +23,12 @@
         "name": "next"
       }
     ],
-    "types": [
-      "node"
-    ],
     "paths": {
       "@/*": [
         "./*"
       ]
     }
+
   },
   "include": [
     "next-env.d.ts",
