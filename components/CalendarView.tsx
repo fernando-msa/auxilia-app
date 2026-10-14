@@ -17,22 +17,29 @@ export function CalendarView({ events }: CalendarViewProps) {
     <div className="calendar-list">
       {events.map((event) => {
         const startDate = new Date(event.startsAt);
-        const formattedDate = new Intl.DateTimeFormat("pt-BR", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }).format(startDate);
+        const isValidDate = !isNaN(startDate.getTime());
 
-        const monthLabel = new Intl.DateTimeFormat("pt-BR", {
-          month: "short",
-        })
-          .format(startDate)
-          .toUpperCase();
-        const dayLabel = startDate.getDate();
+        const formattedDate = isValidDate
+          ? new Intl.DateTimeFormat("pt-BR", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }).format(startDate)
+          : event.startsAt;
+
+        const monthLabel = isValidDate
+          ? new Intl.DateTimeFormat("pt-BR", {
+              month: "short",
+            })
+              .format(startDate)
+              .toUpperCase()
+          : "DATA";
+        const dayLabel = isValidDate ? startDate.getDate() : "--";
 
         return (
+
           <article key={event.id} className="calendar-event">
             <div className="calendar-date">
               <div className="date-badge">

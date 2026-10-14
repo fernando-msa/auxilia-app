@@ -1,14 +1,103 @@
 import { z } from "zod";
 
-const urlField = z.string().url().max(2048).optional().or(z.literal(""));
 const stringField = (max: number) => z.string().trim().min(1).max(max);
 const optionalString = (max: number) => z.string().trim().max(max).optional().or(z.literal(""));
+
+export const safeHttpUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (val) => {
+      if (!val) return true;
+      try {
+        const parsed = new URL(val);
+        return parsed.protocol === "https:" || parsed.protocol === "http:";
+      } catch {
+        return false;
+      }
+    },
+    { message: "A URL deve ser válida e usar http ou https" }
+  )
+  .optional()
+  .or(z.literal(""));
+
+export const safeCtaUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (val) => {
+      if (!val) return true;
+      if (val.startsWith("/") && !val.startsWith("//") && !val.includes("\\")) {
+        return true;
+      }
+      try {
+        const parsed = new URL(val);
+        return parsed.protocol === "https:" || parsed.protocol === "http:";
+      } catch {
+        return false;
+      }
+    },
+    { message: "A URL deve ser um caminho interno (ex: /eventos) ou link com http/https" }
+  )
+  .optional()
+  .or(z.literal(""));
+
+export const safeYoutubeUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (val) => {
+      if (!val) return true;
+      try {
+        const parsed = new URL(val);
+        const host = parsed.hostname.toLowerCase();
+        return (
+          (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+          (host === "www.youtube.com" ||
+            host === "youtube.com" ||
+            host === "m.youtube.com" ||
+            host === "youtu.be")
+        );
+      } catch {
+        return false;
+      }
+    },
+    { message: "A URL deve ser um link válido do YouTube" }
+  )
+  .optional()
+  .or(z.literal(""));
+
+export const safeSpotifyUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (val) => {
+      if (!val) return true;
+      try {
+        const parsed = new URL(val);
+        const host = parsed.hostname.toLowerCase();
+        return (
+          (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+          (host === "open.spotify.com" || host === "spotify.com")
+        );
+      } catch {
+        return false;
+      }
+    },
+    { message: "A URL deve ser um link válido do Spotify" }
+  )
+  .optional()
+  .or(z.literal(""));
 
 const baseFields = {
   title: stringField(300),
   summary: stringField(1000),
   category: stringField(100),
-  coverImage: urlField,
+  coverImage: safeHttpUrl,
 };
 
 export const noticiasSchema = z.object({
@@ -24,15 +113,15 @@ export const eventosSchema = z.object({
   audience: stringField(200),
   startsAt: stringField(50),
   endsAt: optionalString(50),
-  externalSignupUrl: urlField,
+  externalSignupUrl: safeHttpUrl,
 });
 
 export const musicasSchema = z.object({
   ...baseFields,
   songType: stringField(100),
   lyrics: stringField(50_000),
-  youtubeUrl: urlField,
-  spotifyUrl: urlField,
+  youtubeUrl: safeYoutubeUrl,
+  spotifyUrl: safeSpotifyUrl,
 });
 
 export const espiritualidadesSchema = z.object({
@@ -48,8 +137,9 @@ export const avisosSchema = z.object({
   startsAt: optionalString(50),
   endsAt: optionalString(50),
   ctaLabel: optionalString(100),
-  ctaUrl: urlField,
+  ctaUrl: safeCtaUrl,
 });
+
 
 export const contentSchemas = {
   noticias: noticiasSchema,

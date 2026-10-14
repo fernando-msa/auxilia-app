@@ -41,8 +41,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("API GET error /admin/integrations/events:", error);
+    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
   }
 }
 
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Ação inválida." }, { status: 400 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("API POST error /admin/integrations/events:", error);
+    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
   }
 }

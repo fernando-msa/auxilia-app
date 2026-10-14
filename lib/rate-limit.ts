@@ -2,17 +2,29 @@ const store = new Map<string, { count: number; resetAt: number }>();
 
 const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_REQUESTS = 30;
+const MAX_STORE_SIZE = 10_000;
 
-// Limpeza automática periódica para evitar vazamento de memória
+// Limpeza automática periódica para evitar vazamento de memória e exaustão DoS
 let lastCleanup = Date.now();
 function cleanupExpired() {
   const now = Date.now();
-  if (now - lastCleanup < 60_000) return;
+  if (now - lastCleanup < 60_000 && store.size < MAX_STORE_SIZE) return;
   lastCleanup = now;
 
   for (const [key, entry] of store.entries()) {
     if (now > entry.resetAt) {
       store.delete(key);
+    }
+  }
+
+  // Se ainda estiver acima do limite máximo após expirar, evict entradas antigas
+  if (store.size > MAX_STORE_SIZE) {
+    const toRemove = store.size - MAX_STORE_SIZE;
+    let count = 0;
+    for (const key of store.keys()) {
+      store.delete(key);
+      count++;
+      if (count >= toRemove) break;
     }
   }
 }
@@ -41,7 +53,10 @@ export function checkRateLimit(
 }
 
 export function getClientIp(request: Request): string {
-  // Prioriza cabeçalhos comuns em provedores de nuvem (Vercel, Cloudflare, etc.)
+  // Prioriza cabeçalhos comuns em provedores de nuvem (Cloudflare, Vercel, etc.)
+  const cfIp = request.headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+
   const vercelIp = request.headers.get("x-vercel-forwarded-for");
   if (vercelIp) return vercelIp.split(",")[0].trim();
 
@@ -53,4 +68,5 @@ export function getClientIp(request: Request): string {
 
   return "127.0.0.1";
 }
+
 

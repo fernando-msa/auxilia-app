@@ -4,6 +4,7 @@ import {
   eventosSchema,
   musicasSchema,
   espiritualidadesSchema,
+  avisosSchema,
   deleteSchema,
   integrationsActionSchema,
   toSlug,
@@ -96,6 +97,14 @@ describe("eventosSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("rejects javascript: URL in externalSignupUrl to prevent XSS", () => {
+    const result = eventosSchema.safeParse({
+      ...validEvent,
+      externalSignupUrl: "javascript:alert(1)",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("musicasSchema", () => {
@@ -120,6 +129,22 @@ describe("musicasSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("rejects untrusted domains or javascript in youtubeUrl", () => {
+    const result = musicasSchema.safeParse({
+      ...validSong,
+      youtubeUrl: "https://evil-site.com/video",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects untrusted domains in spotifyUrl", () => {
+    const result = musicasSchema.safeParse({
+      ...validSong,
+      spotifyUrl: "https://evil-spotify.com/track",
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("espiritualidadesSchema", () => {
@@ -136,6 +161,56 @@ describe("espiritualidadesSchema", () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe("avisosSchema", () => {
+  const validAviso = {
+    title: "Aviso importante",
+    message: "Comunicado oficial para a comunidade",
+    level: "importante",
+  };
+
+  it("accepts valid aviso without ctaUrl", () => {
+    const result = avisosSchema.safeParse(validAviso);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts safe relative path in ctaUrl", () => {
+    const result = avisosSchema.safeParse({
+      ...validAviso,
+      ctaLabel: "Ver eventos",
+      ctaUrl: "/eventos",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts https URL in ctaUrl", () => {
+    const result = avisosSchema.safeParse({
+      ...validAviso,
+      ctaLabel: "Acessar",
+      ctaUrl: "https://somosauxilia.com/retiro",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects javascript: in ctaUrl", () => {
+    const result = avisosSchema.safeParse({
+      ...validAviso,
+      ctaLabel: "Clique",
+      ctaUrl: "javascript:alert(1)",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects protocol-relative URL in ctaUrl", () => {
+    const result = avisosSchema.safeParse({
+      ...validAviso,
+      ctaLabel: "Clique",
+      ctaUrl: "//evil.com",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
 
 describe("deleteSchema", () => {
   it("accepts valid delete payload", () => {

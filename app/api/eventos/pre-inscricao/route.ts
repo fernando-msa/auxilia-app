@@ -37,8 +37,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("API error /eventos/pre-inscricao:", error);
+    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
   }
 }
+
 

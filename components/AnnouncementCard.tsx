@@ -5,13 +5,18 @@ export interface AnnouncementCardProps {
 }
 
 export function AnnouncementCard({ aviso }: AnnouncementCardProps) {
-  const formattedDate = aviso.data_criacao
-    ? new Intl.DateTimeFormat("pt-BR", {
+  let formattedDate = "";
+  if (aviso.data_criacao) {
+    const d = new Date(aviso.data_criacao);
+    if (!isNaN(d.getTime())) {
+      formattedDate = new Intl.DateTimeFormat("pt-BR", {
         year: "numeric",
         month: "short",
         day: "numeric",
-      }).format(new Date(aviso.data_criacao))
-    : "";
+      }).format(d);
+    }
+  }
+
 
   const contentPreview = aviso.conteudo.substring(0, 120);
   const needsTruncation = aviso.conteudo.length > 120;

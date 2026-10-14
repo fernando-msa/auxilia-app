@@ -35,6 +35,14 @@ describe("checkRateLimit", () => {
 });
 
 describe("getClientIp", () => {
+  it("extracts IP from cf-connecting-ip header", async () => {
+    const { getClientIp } = await import("@/lib/rate-limit");
+    const req = new Request("http://localhost", {
+      headers: { "cf-connecting-ip": "198.51.100.5" },
+    });
+    expect(getClientIp(req)).toBe("198.51.100.5");
+  });
+
   it("extracts IP from x-vercel-forwarded-for header", async () => {
     const { getClientIp } = await import("@/lib/rate-limit");
     const req = new Request("http://localhost", {

@@ -38,6 +38,20 @@ An external calendar integration allows automated import of events from Google C
 - **Security Headers** — X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy configured
 - **Global Search** — Search across all content modules
 
+## Security & Hardening
+
+The application underwent a comprehensive security and robustness audit with the following protections in place:
+
+- **Strict Identity & Token Verification** — `validateAdminRequest` enforces `email_verified: true` and `checkRevoked: true` on Firebase ID tokens, preventing account takeover via unverified email addresses.
+- **XSS & Protocol Validation** — Custom Zod schemas enforce strict `https:`/`http:` URL protocols, rejecting `javascript:` and `data:` schemes. CTA buttons accept safe internal relative paths (`/eventos`) while forbidding protocol-relative URLs (`//`).
+- **Domain-Restricted Media Links** — YouTube and Spotify URLs are verified against official platform hostnames.
+- **DDoS & Memory Exhaustion Defense** — In-memory rate limiting with automated eviction and a strict `MAX_STORE_SIZE` ceiling (10,000 keys) prevents memory ballooning. Headers `cf-connecting-ip`, `x-vercel-forwarded-for`, and `x-real-ip` are prioritized.
+- **API Information Disclosure Protection (CWE-209)** — Internal error traces are logged privately on the server; clients receive clean, uniform error messages.
+- **Rate-Limited Public Endpoints** — Volunteer signup (`/api/voluntarios`), event pre-registration (`/api/eventos/pre-inscricao`), and provider synchronization (`/api/integrations/sync/events`) are protected by IP rate limits.
+- **Hardened Firestore Rules** — Client access is restricted to published documents; sensitive PII collections (`voluntarios`, `eventos_pre_inscricoes`, `eventos_importados`) strictly deny client read/write and are accessible only through the server-side Firebase Admin SDK.
+- **HTTP Security Headers** — Strict CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, `Permissions-Policy`, and `poweredByHeader: false`.
+- **Fault-Tolerant UI Rendering** — Safe date parsing guards all components against `RangeError: Invalid time value` unhandled exceptions.
+
 ## Tech Stack
 
 | Layer | Technology | Purpose |
@@ -47,9 +61,9 @@ An external calendar integration allows automated import of events from Google C
 | Language | TypeScript 5 (strict) | Type safety across the stack |
 | Database | Google Firestore | NoSQL document storage |
 | Auth | Firebase Auth (Google) | Client-side authentication |
-| Admin SDK | Firebase Admin | Server-side token verification |
+| Admin SDK | Firebase Admin | Server-side token verification & data management |
 | Validation | Zod | Runtime schema validation |
-| Testing | Vitest | Unit and integration tests |
+| Testing | Vitest | Unit, security, and integration tests |
 | Deploy | Vercel | Serverless hosting |
 
 ## Architecture
@@ -59,16 +73,16 @@ The application follows a **layered service-oriented architecture**:
 ```
 Pages (SSR)  →  Services  →  Firestore
     ↓
-API Routes   →  Auth + Validation  →  Firestore
+API Routes   →  Auth + Validation + Rate Limiting  →  Firestore Admin SDK
     ↓
 Components   →  Firebase Client SDK  →  Firestore (reads only)
 ```
 
 - **Pages** — Server components that call services directly for SSR
 - **Services** — Data access layer that maps Firestore documents to typed domain objects
-- **API Routes** — Authorization boundary with token verification and input validation
+- **API Routes** — Authorization boundary with token verification, rate limiting, and input validation
 - **Middleware** — Protects internal dashboard routes (`/dashboard/*`)
-- **Firestore Rules** — Secondary defense layer requiring admin custom claims for writes
+- **Firestore Rules** — Secondary defense layer requiring admin custom claims for writes and denying client access to PII
 
 See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
 
@@ -83,8 +97,8 @@ See [docs/architecture.md](docs/architecture.md) for detailed architecture docum
 ### Installation
 
 ```bash
-git clone https://github.com/fernando-msa/auxilia-app-1.git
-cd auxilia-app-1
+git clone https://github.com/fernando-msa/auxilia-app.git
+cd auxilia-app
 npm install
 ```
 
@@ -130,7 +144,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Project Structure
 
 ```
-auxilia-app-1/
+auxilia-app/
 ├── app/                          # Next.js App Router
 │   ├── page.tsx                  # Home page (hero + content preview)
 │   ├── layout.tsx                # Root layout with navigation
@@ -141,8 +155,9 @@ auxilia-app-1/
 │   ├── api/                      # API routes
 │   │   ├── admin/content/        # Content CRUD (GET/POST/PUT/DELETE)
 │   │   ├── admin/integrations/   # Imported events curation
-│   │   ├── integrations/sync/    # External sync endpoint
-│   │   └── voluntarios/          # Volunteer registration
+│   │   ├── eventos/pre-inscricao # Event pre-registration (rate-limited)
+│   │   ├── integrations/sync/    # External sync endpoint (rate-limited)
+│   │   └── voluntarios/          # Volunteer registration (rate-limited)
 │   ├── busca/                    # Global search
 │   ├── quero-ajudar/             # Volunteer engagement form
 │   ├── eventos/                  # Events module
@@ -154,7 +169,7 @@ auxilia-app-1/
 ├── services/                     # Data access layer + integrations
 ├── types/                        # TypeScript type definitions
 ├── docs/                         # Architecture and product documentation
-├── firestore.rules               # Firestore security rules
+├── firestore.rules               # Hardened Firestore security rules
 ├── middleware.ts                  # Route protection for /dashboard/*
 └── vitest.config.ts              # Test configuration
 ```
@@ -165,24 +180,25 @@ auxilia-app-1/
 | Route | Description |
 |-------|-------------|
 | `/` | Landing page with hero, about section, and content preview |
-| `/noticias`, `/eventos`, `/musicas`, `/espiritualidade` | Content modules |
+| `/noticias`, `/eventos`, `/musicas`, `/espiritualidade` | Content modules with list and detail views |
 | `/busca` | Global search across all content |
-| `/quero-ajudar` | Volunteer registration form |
-| `/admin` | Login (Google OAuth) |
+| `/quero-ajudar` | Volunteer registration form with LGPD consent |
+| `/admin` | Admin login (Google OAuth) and content management |
 
 ### Protected (requires authentication)
 | Route | Description |
 |-------|-------------|
-| `/dashboard/avisos` | Announcements board |
-| `/dashboard/calendario` | Event calendar |
+| `/dashboard/avisos` | Community announcements board |
+| `/dashboard/calendario` | Community event calendar |
 
 ### API
-| Endpoint | Methods | Auth |
-|----------|---------|------|
-| `/api/admin/content` | GET, POST, PUT, DELETE | Token + email whitelist |
-| `/api/admin/integrations/events` | GET, POST | Token + email whitelist |
-| `/api/integrations/sync/events` | POST | Sync secret |
-| `/api/voluntarios` | POST | Public |
+| Endpoint | Methods | Auth / Protection |
+|----------|---------|-------------------|
+| `/api/admin/content` | GET, POST, PUT, DELETE | Token + verified email allowlist + rate limit |
+| `/api/admin/integrations/events` | GET, POST | Token + verified email allowlist + rate limit |
+| `/api/integrations/sync/events` | POST | Sync secret + rate limit |
+| `/api/voluntarios` | POST | Public + rate limit (5 req/min) |
+| `/api/eventos/pre-inscricao` | POST | Public + rate limit (10 req/min) |
 
 ## Testing
 
@@ -191,10 +207,10 @@ npm test            # Run all tests
 npm run test:watch  # Run tests in watch mode
 ```
 
-Tests cover:
-- Zod validation schemas (valid/invalid inputs, edge cases)
-- Rate limiter behavior (threshold, key isolation)
-- Auth module (missing tokens, empty tokens)
+The automated test suite contains **53 tests** covering:
+- **Zod validation schemas** — Required fields, limits, XSS prevention (`javascript:` rejection), relative vs absolute URL policies, and domain filtering for media links.
+- **Rate limiter behavior** — Request thresholds, custom limits, key isolation, memory ceiling eviction, and multi-proxy header extraction (`cf-connecting-ip`, `x-vercel-forwarded-for`, `x-real-ip`).
+- **Auth module** — Missing tokens, malformed headers, email verification enforcement (`email_verified`), and whitelist access control.
 
 ## Documentation
 
@@ -211,9 +227,10 @@ Tests cover:
 - Institutional home page with 4 content modules
 - Admin panel with Google Auth + server-side validation + content editing
 - Internal dashboard with announcements and calendar
-- Volunteer engagement form
+- Volunteer engagement form with LGPD consent
 - External calendar integration with curation workflow
-- Global search, PWA manifest, Firestore security rules
+- Global search, PWA manifest, hardened Firestore security rules
+- Complete security audit: anti-XSS URL validation, email verification checks, rate limiting with memory eviction, error sanitization, and resilient UI date rendering
 
 **Next:**
 - Advanced filters, image upload, loading skeletons
@@ -233,3 +250,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 **Fernando S. De Santana Junior**
 
 Built with the spirit of Don Bosco — accompanying young people through technology and faith.
+

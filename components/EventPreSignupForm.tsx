@@ -9,7 +9,8 @@ export function EventPreSignupForm({ eventId, eventSlug }: { eventId: string; ev
     event.preventDefault();
     setStatus("");
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const payload = {
       eventId,
       eventSlug,
@@ -32,9 +33,10 @@ export function EventPreSignupForm({ eventId, eventSlug }: { eventId: string; ev
       return;
     }
 
-    event.currentTarget.reset();
+    form.reset();
     setStatus("Pré-inscrição enviada! A equipe entrará em contato.");
   };
+
 
   return (
     <form className="pre-signup-form" onSubmit={onSubmit}>

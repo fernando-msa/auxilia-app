@@ -14,22 +14,32 @@ service cloud.firestore {
     }
 
     match /noticias/{docId} {
-      allow read: if isPublicReadCollection();
+      allow read: if isPublicReadCollection() || isAdminEmail();
       allow create, update, delete: if isAdminEmail();
     }
 
     match /eventos/{docId} {
-      allow read: if isPublicReadCollection();
+      allow read: if isPublicReadCollection() || isAdminEmail();
       allow create, update, delete: if isAdminEmail();
     }
 
     match /musicas/{docId} {
-      allow read: if isPublicReadCollection();
+      allow read: if isPublicReadCollection() || isAdminEmail();
       allow create, update, delete: if isAdminEmail();
     }
 
     match /espiritualidades/{docId} {
-      allow read: if isPublicReadCollection();
+      allow read: if isPublicReadCollection() || isAdminEmail();
+      allow create, update, delete: if isAdminEmail();
+    }
+
+    match /avisos/{docId} {
+      allow read: if isPublicReadCollection() || isAdminEmail();
+      allow create, update, delete: if isAdminEmail();
+    }
+
+    match /avisos_oficiais/{docId} {
+      allow read: if isPublicReadCollection() || isAdminEmail();
       allow create, update, delete: if isAdminEmail();
     }
 
@@ -38,8 +48,22 @@ service cloud.firestore {
       allow create, update, delete: if isAdminEmail();
     }
 
+    // Coleções privadas e dados pessoais sensíveis (PII): somente via backend Admin SDK
+    match /voluntarios/{docId} {
+      allow read, write: if false;
+    }
+
+    match /eventos_pre_inscricoes/{docId} {
+      allow read, write: if false;
+    }
+
+    match /eventos_importados/{docId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+

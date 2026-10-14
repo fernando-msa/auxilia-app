@@ -51,8 +51,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("API GET error /admin/content:", error);
+    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
   }
 }
 
@@ -99,8 +99,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("API POST error /admin/content:", error);
+    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
   }
 }
 
@@ -150,8 +150,8 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("API PUT error /admin/content:", error);
+    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
   }
 }
 
@@ -174,7 +174,7 @@ export async function DELETE(request: Request) {
     await getAdminDb().collection(result.data.type).doc(result.data.id).delete();
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro inesperado.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("API DELETE error /admin/content:", error);
+    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
   }
 }

@@ -10,16 +10,18 @@ function getAllowedEmails(): string[] {
 }
 
 export async function validateAdminRequest(request: Request) {
-  const token = request.headers.get("authorization")?.replace("Bearer ", "");
+  const authHeader = request.headers.get("authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+
   if (!token) {
     return { error: NextResponse.json({ error: "Token não enviado." }, { status: 401 }) };
   }
 
   try {
-    const decoded = await getAdminAuth().verifyIdToken(token);
+    const decoded = await getAdminAuth().verifyIdToken(token, true);
     const userEmail = decoded.email?.toLowerCase();
 
-    if (!userEmail || !getAllowedEmails().includes(userEmail)) {
+    if (!userEmail || !decoded.email_verified || !getAllowedEmails().includes(userEmail)) {
       return {
         error: NextResponse.json({ error: "Usuário sem permissão." }, { status: 403 }),
       };
